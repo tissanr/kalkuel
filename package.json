@@ -1,0 +1,11 @@
+{
+  "name": "kalkuel",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "dev": "npm run dev -w @kalkuel/web",
+    "build": "npm run build -w @kalkuel/web",
+    "test": "npm test -w @kalkuel/engine"
+  }
+}

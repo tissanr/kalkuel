@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kalkül</title>
+  </head>
+  <body>
+    <header class="bar">
+      <div class="brand">Kalk<span>ü</span>l</div>
+      <div class="file">
+        <span id="filename">Unbenannt.md</span>
+        <span id="dirty" class="dirty" title="Ungespeichert" hidden>●</span>
+      </div>
+      <nav class="actions">
+        <button id="btn-new" type="button">Neu</button>
+        <button id="btn-open" type="button" title="Öffnen (⌘O)">Öffnen</button>
+        <button id="btn-save" type="button" title="Speichern (⌘S, ⌘⇧S = Speichern unter)">Speichern</button>
+        <button id="btn-sample" type="button" title="Beispieldokument laden">Beispiel</button>
+        <span class="sep"></span>
+        <label class="toggle"><input type="checkbox" id="tg-preview" /> Live Preview</label>
+        <label class="toggle"><input type="checkbox" id="tg-results" /> Ergebnisse</label>
+      </nav>
+    </header>
+    <main id="editor"></main>
+    <footer class="status">
+      <span id="status-rates">Wechselkurse werden geladen …</span>
+      <span class="hint">Klick auf Ergebnis = kopieren · ⌘⇧C kopiert das Ergebnis der Zeile · ```calc für Rechenblöcke · `= ausdruck` im Text</span>
+    </footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

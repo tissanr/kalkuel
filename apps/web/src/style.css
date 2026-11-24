@@ -1,0 +1,332 @@
+:root {
+  --bg: #fbfaf7;
+  --panel: #f3f1ec;
+  --text: #24231f;
+  --heading: #15140f;
+  --muted: #8b877d;
+  --border: #e4e0d6;
+  --accent: #2f6fdb;
+  --result: #1f7a4d;
+  --result-bg: #e8f3ec;
+  --error: #b5452f;
+  --error-bg: #fbecE8;
+  --number: #9a5b00;
+  --unit: #2f6fdb;
+  --variable: #7b3fb5;
+  --keyword: #b03a6c;
+  --code-bg: #f1eee7;
+  --active-line: #f4f1ea;
+  --selection: #d7e4fb;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
+  --result-col: 210px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1b1d;
+    --panel: #232326;
+    --text: #e3e1dc;
+    --heading: #f4f2ee;
+    --muted: #8c8a85;
+    --border: #34343a;
+    --accent: #79a7ff;
+    --result: #6fd39c;
+    --result-bg: #1f3329;
+    --error: #ff8a70;
+    --error-bg: #3a2420;
+    --number: #f0b45c;
+    --unit: #79a7ff;
+    --variable: #c99bf5;
+    --keyword: #f28bb5;
+    --code-bg: #26262a;
+    --active-line: #222225;
+    --selection: #2c3d5c;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+}
+
+/* Toolbar */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  flex-wrap: wrap;
+}
+.brand {
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+.brand span {
+  color: var(--result);
+}
+.file {
+  color: var(--muted);
+  font-size: 13px;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dirty {
+  color: var(--accent);
+  margin-left: 6px;
+  font-size: 10px;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.actions button {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+.actions button:hover {
+  border-color: var(--muted);
+}
+.sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 4px;
+}
+.toggle {
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Editor */
+#editor {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+#editor .cm-editor {
+  flex: 1;
+  height: 100%;
+  background: var(--bg);
+}
+#editor .cm-editor.cm-focused {
+  outline: none;
+}
+#editor .cm-scroller {
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.65;
+}
+#editor .cm-content {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 32px 0 50vh;
+  caret-color: var(--text);
+}
+#editor .cm-line {
+  position: relative;
+  padding: 0 calc(var(--result-col) + 24px) 0 24px;
+}
+.hide-results #editor .cm-line {
+  padding-right: 24px;
+}
+.cm-activeLine {
+  background: var(--active-line);
+}
+.cm-selectionBackground,
+.cm-focused .cm-selectionBackground,
+.cm-content ::selection {
+  background: var(--selection) !important;
+}
+.cm-cursor {
+  border-left-color: var(--text);
+}
+.cm-placeholder {
+  color: var(--muted);
+}
+
+/* Markdown */
+.cm-md-h1 {
+  font-size: 1.85em;
+  line-height: 1.3;
+  padding-top: 0.4em !important;
+}
+.cm-md-h2 {
+  font-size: 1.4em;
+  line-height: 1.35;
+  padding-top: 0.6em !important;
+}
+.cm-md-h3 {
+  font-size: 1.2em;
+  padding-top: 0.4em !important;
+}
+.cm-md-codeblock {
+  background: var(--code-bg);
+  font-family: var(--mono);
+  font-size: 0.92em;
+}
+.cm-md-quote {
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+.cm-md-bullet {
+  color: var(--muted);
+}
+
+/* Calculation */
+.cm-calc-number {
+  color: var(--number);
+}
+.cm-calc-unit {
+  color: var(--unit);
+}
+.cm-calc-variable {
+  color: var(--variable);
+}
+.cm-calc-keyword,
+.cm-calc-function {
+  color: var(--keyword);
+}
+.cm-calc-operator {
+  color: var(--muted);
+}
+
+.cm-calc-result {
+  position: absolute;
+  right: 12px;
+  top: 0;
+  max-width: var(--result-col);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--result);
+  text-align: right;
+  cursor: copy;
+  border-radius: 5px;
+  padding: 0 6px;
+  transition: background 0.2s;
+}
+.cm-md-h1 .cm-calc-result,
+.cm-md-h2 .cm-calc-result,
+.cm-md-h3 .cm-calc-result {
+  font-size: 15px;
+}
+.cm-calc-result:hover {
+  background: var(--result-bg);
+}
+.cm-calc-inline {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--result-bg);
+  color: var(--result);
+  font-weight: 600;
+  font-size: 0.9em;
+  line-height: 1.5;
+  cursor: copy;
+}
+.cm-calc-error {
+  color: var(--error);
+  font-weight: 400;
+  font-size: 13px;
+  cursor: help;
+}
+.cm-calc-inline.cm-calc-error {
+  background: var(--error-bg);
+}
+.cm-calc-copied {
+  background: var(--result) !important;
+  color: var(--bg) !important;
+}
+.hide-results .cm-calc-result {
+  display: none;
+}
+
+.cm-tooltip {
+  border: 1px solid var(--border) !important;
+  background: var(--panel) !important;
+  color: var(--text);
+  border-radius: 6px;
+}
+.cm-calc-tooltip {
+  padding: 4px 8px;
+  font-size: 13px;
+}
+.cm-calc-tooltip b {
+  color: var(--variable);
+}
+.cm-calc-tooltip small {
+  color: var(--muted);
+}
+.cm-tooltip-autocomplete ul li[aria-selected] {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+
+/* Status bar */
+.status {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+}
+.status .hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  :root {
+    --result-col: 120px;
+  }
+  #editor .cm-line {
+    padding-left: 12px;
+  }
+  .status .hint {
+    display: none;
+  }
+}
