@@ -1,116 +1,116 @@
-# Kalkül – Spezifikation (Entwurf v0.1)
+# Kalkül – Specification (draft v0.1)
 
-> Ein Markdown-Editor, der rechnet. Notizen, Überschriften, Listen und Tabellen wie in Obsidian/Typora –
-> und jede Rechenzeile wird live ausgewertet wie in Numi.
-
----
-
-## 1. Ziel & Abgrenzung
-
-**Ziel:** Ein Dokument ist ganz normales Markdown (`.md`), bleibt in jedem anderen Editor lesbar,
-aber in Kalkül erscheinen neben Rechenzeilen die Ergebnisse – live, mit Einheiten, Währungen,
-Prozenten, Variablen und Datum.
-
-**Typische Anwendungsfälle**
-- Budget-/Kostenplanung mit Fließtext drumherum
-- Angebots- und Projektkalkulation (Stunden × Satz, Rabatte, MwSt.)
-- Reise-/Umzugsplanung (Währungen, Entfernungen, Zeitzonen)
-- Technische Notizen mit Einheitenrechnung
-
-**Nicht im Scope (v1):** Kollaboration in Echtzeit, Cloud-Sync, Plugins von Drittanbietern,
-symbolische Mathematik (CAS), Diagramme.
+> A Markdown editor that calculates. Notes, headings, lists and tables like in Obsidian/Typora –
+> and every calculation line is evaluated live like in Numi.
 
 ---
 
-## 2. Grundprinzip: Was wird gerechnet?
+## 1. Goal & scope
 
-Das ist die zentrale Design-Entscheidung. Vorschlag: **Hybrid aus drei Mechanismen.**
+**Goal:** A document is plain Markdown (`.md`) and stays readable in any other editor,
+but in Kalkül results appear next to calculation lines – live, with units, currencies,
+percentages, variables and dates.
 
-### 2.1 Auto-Erkennung (Standard)
-Jede Zeile außerhalb von Code-Blöcken, die **vollständig** als Ausdruck parsebar ist, wird gerechnet.
-Prosa wird ignoriert, weil sie nicht parst.
+**Typical use cases**
+- Budget/cost planning with prose around it
+- Quotes and project costing (hours × rate, discounts, VAT)
+- Travel/moving planning (currencies, distances, time zones)
+- Technical notes with unit calculations
+
+**Out of scope (v1):** real-time collaboration, cloud sync, third-party plugins,
+symbolic math (CAS), charts.
+
+---
+
+## 2. Core principle: what gets calculated?
+
+This is the central design decision. Proposal: **a hybrid of three mechanisms.**
+
+### 2.1 Auto-detection (default)
+Every line outside code blocks that parses **entirely** as an expression is calculated.
+Prose is ignored because it doesn't parse.
 
 ```markdown
-## Miete & Nebenkosten
+## Rent & utilities
 
-Die Kaltmiete steigt ab Januar.
+The base rent goes up in January.
 
-miete = 1.250 €                     → 1.250,00 €
-nebenkosten = 280 €                 → 280,00 €
-miete + nebenkosten                 → 1.530,00 €
+rent = 1.250 €                      → 1.250,00 €
+utilities = 280 €                   → 280,00 €
+rent + utilities                    → 1.530,00 €
 prev * 12                           → 18.360,00 €
 ```
 
-- Ergebnis erscheint **rechtsbündig** in einer Ergebnisspalte (wie Numi), wird **nicht** in die Datei geschrieben.
-- Listenpunkte werden auch erkannt: `- Hotel: 3 * 89 €` → Label vor `:` wird ignoriert (Numi-Verhalten).
+- The result appears **right-aligned** in a result column (like Numi) and is **not** written to the file.
+- List items are detected too: `- Hotel: 3 * 89 €` → the label before `:` is ignored (Numi behaviour).
 
-### 2.2 Explizite Rechenblöcke
-```` ```calc ```` -Blöcke erzwingen Rechenmodus für jede Zeile (auch wenn Erkennung unsicher wäre).
-In anderen Editoren erscheinen sie als normaler Code-Block – Datei bleibt sauber.
+### 2.2 Explicit calculation blocks
+```` ```calc ```` blocks force calculation mode for every line (even where detection would be unsure).
+In other editors they show up as a normal code block – the file stays clean.
 
-### 2.3 Inline-Ausdrücke im Fließtext
-Syntax: `` `= ausdruck` `` (Inline-Code, beginnt mit `=`).
+### 2.3 Inline expressions in prose
+Syntax: `` `= expression` `` (inline code starting with `=`).
 
 ```markdown
-Das Projekt kostet insgesamt `= stunden * satz` und damit
-`= (stunden * satz) / budget as %` des Budgets.
+The project costs `= hours * rate` in total, which is
+`= (hours * rate) / budget as %` of the budget.
 ```
-Im Editor wird das Ergebnis als Badge direkt hinter dem Ausdruck angezeigt; im Preview/Export ersetzt.
+In the editor the result is shown as a badge right after the expression; in preview/export it replaces it.
 
-### 2.4 Ausgeschlossen
-- Inhalte in normalen Code-Blöcken (```` ```js ```` etc.), Frontmatter, HTML, Links/URLs.
-- Zeilen, die mit `//` oder `#` (ohne Leerzeichen → Kommentar) beginnen – optional, s. offene Fragen.
+### 2.4 Excluded
+- Contents of normal code blocks (```` ```js ```` etc.), frontmatter, HTML, links/URLs.
+- Lines starting with `//` or `#` (without a space → comment) – optional, see open questions.
 
 ---
 
-## 3. Rechen-Engine (Funktionsumfang)
+## 3. Calculation engine (features)
 
-| Bereich | Beispiele | Priorität |
+| Area | Examples | Priority |
 |---|---|---|
-| Grundrechenarten, Klammern, Potenzen | `(3 + 4) * 2^3`, `17 mod 5` | MVP |
-| Variablen | `satz = 95 €/h`, `satz * 40 h` | MVP |
-| Bezüge | `prev`, `sum`, `total`, `avg` (bis zur letzten Leerzeile / Überschrift) | MVP |
-| Prozent | `20 % of 150`, `150 + 19 %`, `50 as % of 200`, `5 % off 80 €` | MVP |
-| Einheiten | Länge, Masse, Volumen, Fläche, Zeit, Temperatur, Daten (GB/MB), Geschwindigkeit | MVP |
-| Umrechnung | `5 km in miles`, `3 h 20 min in min`, `to`, `as`, `in` | MVP |
-| Währungen | `100 USD in EUR`, `€`, `$`, ISO-Codes; Kurse von API, offline gecacht | MVP |
-| Zahlenformate | `in hex`, `in bin`, `in sci`, deutsche Notation `1.234,56` umschaltbar | v1 |
-| Datum & Zeit | `today + 3 weeks`, `days until 24.12.`, `time in Tokyo` | v1 |
-| Funktionen | `round`, `sqrt`, `min/max`, `abs`, `log`, Trigonometrie | v1 |
-| Abschnitts-Scope | `sum` bezieht sich nur auf aktuelle Überschrift | v1 |
-| Tabellen | Spalten-/Zeilensummen in Markdown-Tabellen (`=sum(col)` in Zelle) | v2 |
-| Eigene Funktionen/Einheiten (JS) | wie Numi-Extensions | v2 |
-| Krypto | `0,1 BTC in EUR` | v2 |
+| Basic arithmetic, brackets, powers | `(3 + 4) * 2^3`, `17 mod 5` | MVP |
+| Variables | `rate = 95 €/h`, `rate * 40 h` | MVP |
+| References | `prev`, `sum`, `total`, `avg` (up to the last blank line / heading) | MVP |
+| Percentages | `20 % of 150`, `150 + 19 %`, `50 as % of 200`, `5 % off 80 €` | MVP |
+| Units | length, mass, volume, area, time, temperature, data (GB/MB), speed | MVP |
+| Conversion | `5 km in miles`, `3 h 20 min in min`, `to`, `as`, `in` | MVP |
+| Currencies | `100 USD in EUR`, `€`, `$`, ISO codes; rates from an API, cached offline | MVP |
+| Number formats | `in hex`, `in bin`, `in sci`, German notation `1.234,56` switchable | v1 |
+| Date & time | `today + 3 weeks`, `days until 24.12.`, `time in Tokyo` | v1 |
+| Functions | `round`, `sqrt`, `min/max`, `abs`, `log`, trigonometry | v1 |
+| Section scope | `sum` only covers the current heading | v1 |
+| Tables | column/row sums in Markdown tables (`=sum(col)` in a cell) | v2 |
+| Custom functions/units (JS) | like Numi extensions | v2 |
+| Crypto | `0,1 BTC in EUR` | v2 |
 
-**Sprache:** Schlüsselwörter Englisch (`in`, `of`, `as`) **und** Deutsch (`von`, `in`, `als`, `heute`).
+**Language:** keywords in English (`in`, `of`, `as`) **and** German (`von`, `in`, `als`, `heute`).
 
-**Fehlerverhalten:** Nicht parsebare Zeilen → kein Ergebnis, kein Fehler (Prosa).
-In `calc`-Blöcken → dezentes Fehler-Icon mit Tooltip.
+**Error behaviour:** lines that don't parse → no result, no error (prose).
+In `calc` blocks → a subtle error icon with a tooltip.
 
-**Abhängigkeiten:** Wenn sich `miete` ändert, werden alle abhängigen Zeilen neu berechnet
-(Dokument wird top-down ausgewertet; < 5 ms bei 1.000 Zeilen als Ziel).
+**Dependencies:** when `rent` changes, all dependent lines are recalculated
+(the document is evaluated top-down; target < 5 ms for 1,000 lines).
 
 ---
 
 ## 4. Editor (Markdown)
 
-- **Live-Preview-Modus** (wie Obsidian): Markdown-Syntax wird um den Cursor herum sichtbar, sonst gerendert.
-- Umschaltbar: *Live Preview* / *Quelltext* / *Nur Vorschau*.
-- CommonMark + GFM: Überschriften, Listen, Checkboxen, Tabellen, Code, Zitate, Links, Bilder.
-- Ergebnisspalte rechts, ausblendbar; Klick auf Ergebnis = in Zwischenablage kopieren.
-- Syntax-Highlighting für Rechenzeilen (Zahlen, Einheiten, Variablen, Operatoren farbig).
-- Autovervollständigung für Variablen, Einheiten und Währungen.
-- Hover über Variable → zeigt aktuellen Wert und Definitionszeile.
-- Tastatur: `Cmd+Enter` Ergebnis der Zeile einfügen, `Cmd+Shift+C` Ergebnis kopieren.
+- **Live preview mode** (like Obsidian): Markdown syntax is visible around the cursor and rendered elsewhere.
+- Switchable: *Live preview* / *Source* / *Preview only*.
+- CommonMark + GFM: headings, lists, checkboxes, tables, code, quotes, links, images.
+- Result column on the right, can be hidden; click a result = copy to clipboard.
+- Syntax highlighting for calculation lines (numbers, units, variables, operators in colour).
+- Autocompletion for variables, units and currencies.
+- Hover over a variable → shows its current value and defining line.
+- Keyboard: `Cmd+Enter` inserts the line's result, `Cmd+Shift+C` copies it.
 
 ---
 
-## 5. Dateien & Export
+## 5. Files & export
 
-- Speicherformat: reines `.md`, keine Ergebnisse in der Datei (deterministisch, Git-freundlich).
-- Ordner als Bibliothek (Sidebar mit Dateibaum), Volltextsuche.
-- Export: **HTML / PDF** mit eingesetzten Ergebnissen, **Markdown „gebacken“** (Ergebnisse als Text angehängt: `miete + nebenkosten = 1.530,00 €`).
-- Optional: Frontmatter für Dokument-Einstellungen
+- Storage format: plain `.md`, no results in the file (deterministic, Git-friendly).
+- Folder as library (sidebar with file tree), full-text search.
+- Export: **HTML / PDF** with results filled in, **"baked" Markdown** (results appended as text: `rent + utilities = 1.530,00 €`).
+- Optional: frontmatter for document settings
   ```yaml
   ---
   locale: de-DE
@@ -121,66 +121,66 @@ In `calc`-Blöcken → dezentes Fehler-Icon mit Tooltip.
 
 ---
 
-## 6. Technische Architektur (Vorschlag)
+## 6. Technical architecture (proposal)
 
-| Schicht | Technologie | Begründung |
+| Layer | Technology | Reason |
 |---|---|---|
-| App-Hülle | **Tauri 2** (macOS zuerst, später Win/Linux) | klein, schnell, native Dateizugriffe |
-| UI | TypeScript + React (oder Svelte) | |
-| Editor | **CodeMirror 6** | Decorations/Widgets für Ergebnisspalte & Live Preview, Markdown-Parser (Lezer) eingebaut |
-| Rechen-Engine | **eigener Parser in TypeScript** (Pratt-Parser) | Numi-Syntax (`of`, `in`, `%`, Labels) passt nicht in mathjs-Grammatik |
-| Einheiten / Zahlen | eigenes Einheitensystem, `decimal.js` für Präzision | keine Float-Fehler bei Geld |
-| Währungen | z. B. frankfurter.app / EZB-Kurse, täglich gecacht | kostenlos, ohne API-Key |
+| App shell | **Tauri 2** (macOS first, later Win/Linux) | small, fast, native file access |
+| UI | TypeScript + React (or Svelte) | |
+| Editor | **CodeMirror 6** | decorations/widgets for the result column & live preview, Markdown parser (Lezer) built in |
+| Calculation engine | **own parser in TypeScript** (Pratt parser) | Numi syntax (`of`, `in`, `%`, labels) doesn't fit the mathjs grammar |
+| Units / numbers | own unit system, `decimal.js` for precision | no float errors with money |
+| Currencies | e.g. frankfurter.app / ECB rates, cached daily | free, no API key |
 
-Die Engine ist ein **eigenständiges Paket** (`packages/engine`) ohne UI-Abhängigkeit → testbar,
-später auch als CLI oder Web-Version nutzbar.
+The engine is a **standalone package** (`packages/engine`) without UI dependencies → testable,
+and usable later as a CLI or web version.
 
 ```
 kalkuel/
-├─ packages/engine/   # Lexer, Parser, Evaluator, Units, Currencies (+ Tests)
-├─ apps/desktop/      # Tauri + CodeMirror-Editor
+├─ packages/engine/   # lexer, parser, evaluator, units, currencies (+ tests)
+├─ apps/desktop/      # Tauri + CodeMirror editor
 └─ SPEC.md
 ```
 
 ---
 
-## 7. Aufwandsschätzung
+## 7. Effort estimate
 
-| Paket | Inhalt | Aufwand (1 Entwickler) |
+| Package | Content | Effort (1 developer) |
 |---|---|---|
-| M1 Engine-Kern | Lexer/Parser, Arithmetik, Variablen, `prev/sum`, Prozent, Tests | 1–1,5 Wochen |
-| M2 Einheiten & Währungen | Einheitensystem, Umrechnung, Kurs-API + Cache | 1 Woche |
-| M3 Editor-Integration | CodeMirror, Zeilenerkennung, Ergebnisspalte, Highlighting | 1 Woche |
-| M4 Markdown Live Preview | Rendering um den Cursor, Tabellen, Checkboxen | 1–1,5 Wochen |
-| M5 Desktop-App | Tauri, Dateien öffnen/speichern, Sidebar, Einstellungen | 0,5–1 Woche |
-| M6 Datum/Zeit, Inline-Ausdrücke, Export | | 1–1,5 Wochen |
-| **Summe v1** | | **ca. 6–8 Wochen** |
+| M1 Engine core | lexer/parser, arithmetic, variables, `prev/sum`, percentages, tests | 1–1.5 weeks |
+| M2 Units & currencies | unit system, conversion, rates API + cache | 1 week |
+| M3 Editor integration | CodeMirror, line detection, result column, highlighting | 1 week |
+| M4 Markdown live preview | rendering around the cursor, tables, checkboxes | 1–1.5 weeks |
+| M5 Desktop app | Tauri, open/save files, sidebar, settings | 0.5–1 week |
+| M6 Date/time, inline expressions, export | | 1–1.5 weeks |
+| **Total v1** | | **approx. 6–8 weeks** |
 
-**Mit mir als Umsetzer:** Ein lauffähiger **Prototyp (M1 + M3 + einfaches Markdown, als Web-App)**
-ist in einer oder wenigen Sessions machbar. Der größte Aufwand steckt in den Details der Engine
-(Einheiten, Grenzfälle der natürlichen Syntax) und im Feinschliff der Live Preview.
+**With me as implementer:** a working **prototype (M1 + M3 + basic Markdown, as a web app)**
+is doable in one or a few sessions. Most of the effort lies in the details of the engine
+(units, edge cases of the natural syntax) and in polishing the live preview.
 
-**Größte Risiken**
-1. **Mehrdeutigkeit Prosa vs. Rechnung** – z. B. `Termin 3 - 4 Uhr` würde als `-1` gerechnet. → Heuristik + `calc`-Blöcke als Ausweg.
-2. **Deutsche Zahlennotation** (`1.234,56` vs. `1,234.56`) – muss pro Dokument/Locale eindeutig sein.
-3. **Live Preview** ist UI-technisch der fummeligste Teil.
-
----
-
-## 8. Offene Fragen
-
-1. **Plattform:** Desktop (Tauri, macOS) zuerst – oder lieber Web-App / PWA?
-2. **Auto-Erkennung standardmäßig an** – oder nur `calc`-Blöcke + Inline (sicherer, aber weniger „Numi-Feeling“)?
-3. **Standard-Locale** Deutsch (`1.234,56 €`) oder Englisch?
-4. Sollen Ergebnisse **optional in die Datei** geschrieben werden können (z. B. als `<!-- = 1.530 € -->`)?
-5. Kommentar-Syntax: Numi nutzt `#` für Überschriften und `//` für Kommentare – in Markdown ist `#` eine Überschrift. Vorschlag: nur `//`.
+**Biggest risks**
+1. **Ambiguity of prose vs. calculation** – e.g. `Meeting 3 - 4 pm` would be calculated as `-1`. → heuristics + `calc` blocks as a way out.
+2. **German number notation** (`1.234,56` vs. `1,234.56`) – must be unambiguous per document/locale.
+3. **Live preview** is the fiddliest part of the UI.
 
 ---
 
-## 9. MVP-Vorschlag (erster Meilenstein)
+## 8. Open questions
 
-Web-App (Vite + CodeMirror 6), später in Tauri verpackt:
-- Markdown mit Highlighting + einfacher Live Preview (Überschriften, Fett/Kursiv, Listen)
-- Auto-Erkennung von Rechenzeilen, Ergebnisspalte rechts
-- Arithmetik, Variablen, `prev`/`sum`, Prozent, Basiseinheiten, EUR/USD
-- Lokale Speicherung (Datei öffnen/speichern)
+1. **Platform:** desktop (Tauri, macOS) first – or rather a web app / PWA?
+2. **Auto-detection on by default** – or only `calc` blocks + inline (safer, but less of a "Numi feel")?
+3. **Default locale** German (`1.234,56 €`) or English?
+4. Should results **optionally be written to the file** (e.g. as `<!-- = 1.530 € -->`)?
+5. Comment syntax: Numi uses `#` for headings and `//` for comments – in Markdown `#` is a heading. Proposal: only `//`.
+
+---
+
+## 9. MVP proposal (first milestone)
+
+Web app (Vite + CodeMirror 6), later packaged in Tauri:
+- Markdown with highlighting + basic live preview (headings, bold/italic, lists)
+- Auto-detection of calculation lines, result column on the right
+- Arithmetic, variables, `prev`/`sum`, percentages, basic units, EUR/USD
+- Local storage (open/save file)

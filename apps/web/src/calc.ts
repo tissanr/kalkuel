@@ -47,7 +47,7 @@ class ResultWidget extends WidgetType {
       el.title = this.text;
     } else {
       el.textContent = this.text;
-      el.title = 'Klicken zum Kopieren';
+      el.title = 'Click to copy';
       el.addEventListener('mousedown', (e) => {
         e.preventDefault();
         void copy(this.text, el);
@@ -100,7 +100,7 @@ const variableTooltip = hoverTooltip((view, pos) => {
       dom.innerHTML = `<b></b> = <span></span><small></small>`;
       dom.querySelector('b')!.textContent = name;
       dom.querySelector('span')!.textContent = info.text;
-      dom.querySelector('small')!.textContent = `  · definiert in Zeile ${info.line + 1}`;
+      dom.querySelector('small')!.textContent = `  · defined on line ${info.line + 1}`;
       return { dom };
     },
   };

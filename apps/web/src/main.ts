@@ -42,7 +42,7 @@ const store = {
 // File System Access API types are not in lib.dom for all browsers.
 type FileHandle = { name: string; getFile(): Promise<File>; createWritable(): Promise<{ write(d: string): Promise<void>; close(): Promise<void> }> };
 let fileHandle: FileHandle | null = null;
-let fileName = store.get(NAME_KEY) ?? 'Unbenannt.md';
+let fileName = store.get(NAME_KEY) ?? 'Untitled.md';
 let dirty = false;
 
 function setFileName(name: string) {
@@ -80,7 +80,7 @@ const view = new EditorView({
       syntaxHighlighting(markdownHighlight),
       previewCompartment.of(livePreview(previewOn)),
       calc(),
-      placeholder('Schreib los … z. B. „miete = 1.250 €“'),
+      placeholder('Start typing … e.g. "rent = 1250 €"'),
       keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...searchKeymap, ...completionKeymap, indentWithTab]),
       EditorView.updateListener.of((u) => {
         if (!u.docChanged) return;
@@ -111,13 +111,13 @@ const pickerTypes = [{ description: 'Markdown', accept: { 'text/markdown': ['.md
 const isAbort = (e: unknown) => e instanceof DOMException && e.name === 'AbortError';
 
 function newDoc() {
-  if (dirty && !confirm('Ungespeicherte Änderungen verwerfen?')) return;
+  if (dirty && !confirm('Discard unsaved changes?')) return;
   fileHandle = null;
-  setDoc('', 'Unbenannt.md');
+  setDoc('', 'Untitled.md');
 }
 
 async function openDoc() {
-  if (dirty && !confirm('Ungespeicherte Änderungen verwerfen?')) return;
+  if (dirty && !confirm('Discard unsaved changes?')) return;
   try {
     if (w.showOpenFilePicker) {
       [fileHandle] = await w.showOpenFilePicker({ types: pickerTypes });
@@ -134,7 +134,7 @@ async function openDoc() {
       input.click();
     }
   } catch (e) {
-    if (!isAbort(e)) alert(`Datei konnte nicht geöffnet werden: ${e}`);
+    if (!isAbort(e)) alert(`Could not open file: ${e}`);
   }
 }
 
@@ -156,7 +156,7 @@ async function saveDoc(saveAs = false) {
     }
     setDirty(false);
   } catch (e) {
-    if (!isAbort(e)) alert(`Datei konnte nicht gespeichert werden: ${e}`);
+    if (!isAbort(e)) alert(`Could not save file: ${e}`);
   }
 }
 
@@ -169,8 +169,8 @@ function applyResults() {
 type Theme = 'auto' | 'light' | 'dark';
 const themes: Record<Theme, { icon: string; label: string; next: Theme }> = {
   auto: { icon: '◐', label: 'Auto', next: 'light' },
-  light: { icon: '☀', label: 'Hell', next: 'dark' },
-  dark: { icon: '☾', label: 'Dunkel', next: 'auto' },
+  light: { icon: '☀', label: 'Light', next: 'dark' },
+  dark: { icon: '☾', label: 'Dark', next: 'auto' },
 };
 const savedTheme = store.get(THEME_KEY);
 let theme: Theme = savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : 'auto';
@@ -182,7 +182,7 @@ function applyTheme() {
   const t = themes[theme];
   const btn = $('btn-theme');
   btn.textContent = `${t.icon} ${t.label}`;
-  btn.title = `Design: ${t.label} – klicken für ${themes[t.next].label}`;
+  btn.title = `Theme: ${t.label} – click for ${themes[t.next].label}`;
 }
 
 $('btn-theme').addEventListener('click', () => {
@@ -206,9 +206,9 @@ $<HTMLInputElement>('tg-results').addEventListener('change', (e) => {
   applyResults();
 });
 $('btn-sample').addEventListener('click', () => {
-  if (dirty && !confirm('Ungespeicherte Änderungen verwerfen?')) return;
+  if (dirty && !confirm('Discard unsaved changes?')) return;
   fileHandle = null;
-  setDoc(sample, 'Beispiel.md');
+  setDoc(sample, 'Example.md');
 });
 
 window.addEventListener('keydown', (e) => {
@@ -235,5 +235,5 @@ view.focus();
 loadRates().then((s) => {
   view.dispatch({ effects: recompute.of(null) });
   $('status-rates').textContent =
-    s.source === 'fallback' ? 'Wechselkurse: Näherungswerte (offline)' : `Wechselkurse: EZB, Stand ${s.date}`;
+    s.source === 'fallback' ? 'Exchange rates: approximate (offline)' : `Exchange rates: ECB, as of ${s.date}`;
 });

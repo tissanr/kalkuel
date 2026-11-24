@@ -2,9 +2,9 @@ import { expect, test } from '@playwright/test';
 import { expectLine, openDoc, resultOf } from './helpers';
 
 test('shows results for calculations and none for prose', async ({ page }) => {
-  await openDoc(page, '# Budget\n\nDas ist Prosa.\nmiete = 1.250 €\nnebenkosten = 280 €\nmiete + nebenkosten');
-  await expect(resultOf(page, 'miete + nebenkosten')).toHaveText('1.530,00 €');
-  await expect(page.locator('.cm-line', { hasText: 'Das ist Prosa.' }).locator('.cm-calc-result')).toHaveCount(0);
+  await openDoc(page, '# Budget\n\nThis is prose.\nrent = 1.250 €\nutilities = 280 €\nrent + utilities');
+  await expect(resultOf(page, 'rent + utilities')).toHaveText('1.530,00 €');
+  await expect(page.locator('.cm-line', { hasText: 'This is prose.' }).locator('.cm-calc-result')).toHaveCount(0);
 });
 
 test('recalculates while typing', async ({ page }) => {
@@ -21,7 +21,7 @@ test('converts currencies with the loaded rates', async ({ page }) => {
 });
 
 test('inline expressions show a badge', async ({ page }) => {
-  await openDoc(page, 'x = 5\nDas ergibt `= x * 2` Stück.');
+  await openDoc(page, 'x = 5\nThat makes `= x * 2` pieces.');
   await expect(page.locator('.cm-calc-inline')).toHaveText('10');
 });
 

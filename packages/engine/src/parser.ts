@@ -51,7 +51,7 @@ class Parser {
   }
   fail(msg?: string): never {
     const t = this.peek();
-    throw new CalcSyntaxError(msg ?? (t.type === 'eof' ? 'Ausdruck unvollständig' : `Unerwartet: „${t.value}“`));
+    throw new CalcSyntaxError(msg ?? (t.type === 'eof' ? 'Incomplete expression' : `Unexpected: "${t.value}"`));
   }
 
   statement(): Node {
@@ -233,7 +233,7 @@ class Parser {
     for (;;) {
       const t = this.peek();
       const u = t.type === 'ident' ? lookupUnit(t.value) : undefined;
-      if (!u) this.fail(t.type === 'ident' ? `Unbekannte Einheit „${t.value}“` : undefined);
+      if (!u) this.fail(t.type === 'ident' ? `Unknown unit "${t.value}"` : undefined);
       this.next();
       let p = 1;
       if (this.isOp('^') && this.peek(1).type === 'num') {
