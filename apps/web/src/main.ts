@@ -15,6 +15,7 @@ const DOC_KEY = 'kalkuel:doc';
 const NAME_KEY = 'kalkuel:name';
 const PREVIEW_KEY = 'kalkuel:preview';
 const RESULTS_KEY = 'kalkuel:results';
+const THEME_KEY = 'kalkuel:theme';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -164,6 +165,32 @@ function applyResults() {
   ($('tg-results') as HTMLInputElement).checked = resultsOn;
 }
 
+// Theme: auto (follows the system) → light → dark
+type Theme = 'auto' | 'light' | 'dark';
+const themes: Record<Theme, { icon: string; label: string; next: Theme }> = {
+  auto: { icon: '◐', label: 'Auto', next: 'light' },
+  light: { icon: '☀', label: 'Hell', next: 'dark' },
+  dark: { icon: '☾', label: 'Dunkel', next: 'auto' },
+};
+const savedTheme = store.get(THEME_KEY);
+let theme: Theme = savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : 'auto';
+
+function applyTheme() {
+  const root = document.documentElement;
+  if (theme === 'auto') delete root.dataset.theme;
+  else root.dataset.theme = theme;
+  const t = themes[theme];
+  const btn = $('btn-theme');
+  btn.textContent = `${t.icon} ${t.label}`;
+  btn.title = `Design: ${t.label} – klicken für ${themes[t.next].label}`;
+}
+
+$('btn-theme').addEventListener('click', () => {
+  theme = themes[theme].next;
+  store.set(THEME_KEY, theme);
+  applyTheme();
+});
+
 $('btn-new').addEventListener('click', newDoc);
 $('btn-open').addEventListener('click', () => void openDoc());
 $('btn-save').addEventListener('click', () => void saveDoc());
@@ -201,6 +228,7 @@ window.addEventListener('beforeunload', (e) => {
 
 setFileName(fileName);
 applyResults();
+applyTheme();
 view.focus();
 
 // Exchange rates

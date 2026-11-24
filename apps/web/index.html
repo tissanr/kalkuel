@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kalkül</title>
+    <script>
+      try {
+        const t = localStorage.getItem('kalkuel:theme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
   </head>
   <body>
     <header class="bar">
@@ -20,6 +26,8 @@
         <span class="sep"></span>
         <label class="toggle"><input type="checkbox" id="tg-preview" /> Live Preview</label>
         <label class="toggle"><input type="checkbox" id="tg-results" /> Ergebnisse</label>
+        <span class="sep"></span>
+        <button id="btn-theme" type="button" class="theme">Auto</button>
       </nav>
     </header>
     <main id="editor"></main>
