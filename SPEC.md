@@ -171,7 +171,7 @@ is doable in one or a few sessions. Most of the effort lies in the details of th
 
 1. **Platform:** desktop (Tauri, macOS) first – or rather a web app / PWA?
 2. **Auto-detection on by default** – or only `calc` blocks + inline (safer, but less of a "Numi feel")?
-3. **Default locale** German (`1.234,56 €`) or English?
+3. ~~**Default locale** German or English?~~ Decided: English (`€1,234.56`); German via frontmatter `locale: de`.
 4. Should results **optionally be written to the file** (e.g. as `<!-- = 1.530 € -->`)?
 5. Comment syntax: Numi uses `#` for headings and `//` for comments – in Markdown `#` is a heading. Proposal: only `//`.
 

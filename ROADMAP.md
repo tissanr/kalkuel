@@ -77,6 +77,9 @@ One PR, because the type ripples through everything:
 
 ## Tests
 
+The engine acceptance tests use the German locale (`1.234,56`) on purpose: comma decimals and dot grouping are the harder case. The browser tests use the default English format.
+
+
 | Level | Where | What | Runs |
 |---|---|---|---|
 | Engine (document in → displayed text out) | `packages/engine/test/*.test.ts` | the main oracle; one line per case | `npm test` |

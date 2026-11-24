@@ -94,6 +94,12 @@ describe('document', () => {
   it('ignores prose', () => {
     expect(last('This is a sentence.')).toBeUndefined();
     expect(last('Meeting 3 - 4 pm')).toBeUndefined();
+    // German prose is ignored too
+    expect(last('Das ist ein Satz.')).toBeUndefined();
+    expect(last('Termin 3 - 4 Uhr')).toBeUndefined();
+    expect(last('1. Einkauf')).toBeUndefined();
+    expect(last('Wir treffen uns um 10:30')).toBeUndefined();
+    expect(last('Stunden')).toBeUndefined();
     expect(last('Termin 3 - 4 Uhr')).toBeUndefined();
     expect(last('24.12.2025')).toBeUndefined();
     expect(last('Stunden')).toBeUndefined();
@@ -117,6 +123,11 @@ describe('document', () => {
     const r = evaluateDocument('rate = 95 €/h');
     expect(r.vars.get('rate')).toEqual({ line: 0, text: '95 €/h' });
     expect(r.lines[0]?.spans.map((s) => s.type)).toEqual(['variable', 'operator', 'number', 'unit', 'operator', 'unit']);
+  });
+  it('defaults to English number format', () => {
+    expect(evaluateDocument('1,250.5 + 1').lines[0]?.text).toBe('1,251.5');
+    expect(evaluateDocument('100 € * 2').lines[0]?.text).toBe('€200.00');
+    expect(evaluateDocument('---\nlocale: de\n---\n1.250,5 + 1').lines[3]?.text).toBe('1.251,5');
   });
   it('locale from frontmatter', () => {
     expect(last('---\nlocale: en-US\n---\n1,250.5 + 1')).toBe('1,251.5');

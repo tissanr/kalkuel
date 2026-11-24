@@ -24,4 +24,4 @@ npm run build      # production build to apps/web/dist
 - Variables (`rate = 95 €/h`), `prev`, `sum`/`total`, `avg` (up to the last blank line/heading)
 - Percentages (`20 % of 150`, `+ 19 %`, `5 % off`, `50 as % of 200`), units, currencies (ECB rates), `in hex/bin`
 - Keywords in English and German (`of`/`von`, `as`/`als`, `sum`/`summe` …)
-- Number format German by default (`1.234,56`); switch with frontmatter `locale: en`. Separate function arguments with `;` or `, `.
+- Number format English by default (`1,234.56`); frontmatter `locale: de` switches to German (`1.234,56`, function arguments separated with `;`).

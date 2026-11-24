@@ -6,10 +6,10 @@ import { expectLine } from './helpers';
  * The third field names the roadmap step that fixes a known bug; delete it when that step is done.
  */
 const cases: [src: string, result: string, bug?: string][] = [
-  ['0,1 + 0,2 - 0,3', '0', 'D2'],
-  ['round(1,005; 2)', '1,01', 'D2'],
-  ['12.345.678.901,23 €', '12.345.678.901,23 €', 'D3'],
-  ['19,99 € * 3', '59,97 €'],
+  ['0.1 + 0.2 - 0.3', '0', 'D2'],
+  ['round(1.005, 2)', '1.01', 'D2'],
+  ['12,345,678,901.23 €', '€12,345,678,901.23', 'D3'],
+  ['19.99 € * 3', '€59.97'],
 ];
 
 for (const [src, result, bug] of cases) {
