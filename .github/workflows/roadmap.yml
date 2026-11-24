@@ -7,8 +7,9 @@ name: Roadmap pipeline
 # Triggers: every weekday morning, by hand (Actions → Run workflow), or by adding
 # the label `claude:run` to an issue.
 #
-# Needs the repository secret CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`, Pro/Max plan).
-# Runs count against that subscription's usage limits.
+# Runs on a Claude Pro/Max subscription: needs the secret CLAUDE_CODE_OAUTH_TOKEN
+# (from `claude setup-token`). Never uses more than USAGE_LIMIT of the subscription:
+# it doesn't start above it, and stops Claude when the 5-hour or weekly usage reaches it.
 
 on:
   schedule:
@@ -30,7 +31,9 @@ permissions:
   pull-requests: write
   issues: write
   actions: write # to start CI on the new PR
-  id-token: write
+
+env:
+  USAGE_LIMIT: '0.75'
 
 jobs:
   step:
@@ -39,18 +42,29 @@ jobs:
     timeout-minutes: 60
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
     steps:
       - name: Check the Claude token
-        env:
-          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
-          if [ -z "$TOKEN" ]; then
+          if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
             echo "::error::Secret CLAUDE_CODE_OAUTH_TOKEN is missing. Run 'claude setup-token', then: gh secret set CLAUDE_CODE_OAUTH_TOKEN -R ${{ github.repository }}"
             exit 1
           fi
 
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm install -g @anthropic-ai/claude-code
+
+      - name: Check Claude usage
+        id: usage
+        run: node .github/scripts/claude-with-limit.mjs check
+
       - name: Pick the issue
         id: pick
+        if: steps.usage.outputs.stopped != 'true'
         env:
           INPUT_ISSUE: ${{ github.event.inputs.issue || github.event.issue.number }}
         run: |
@@ -82,13 +96,6 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "Issue #$N → $ID"
 
-      - uses: actions/checkout@v5
-        if: steps.pick.outputs.number
-      - uses: actions/setup-node@v5
-        if: steps.pick.outputs.number
-        with:
-          node-version: 24
-          cache: npm
       - name: Install
         if: steps.pick.outputs.number
         run: |
@@ -96,12 +103,13 @@ jobs:
           npx playwright install --with-deps chromium
           git checkout -b "${{ steps.pick.outputs.branch }}"
 
-      - name: Write the prompt
+      - name: Claude implements the step
+        id: claude
         if: steps.pick.outputs.number
-        id: prompt
         run: |
+          set -euo pipefail
+          P="$RUNNER_TEMP/prompt.md"
           {
-            echo 'text<<PROMPT_EOF'
             echo "Implement roadmap issue #${{ steps.pick.outputs.number }} in this repository."
             echo
             echo "Read ROADMAP.md first. Do exactly this one step, nothing more, as simply as possible."
@@ -114,27 +122,26 @@ jobs:
             echo
             echo "--- Issue ---"
             jq -r '"# " + .title + "\n\n" + .body' "$RUNNER_TEMP/issue.json"
-            echo 'PROMPT_EOF'
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Claude implements the step
-        if: steps.pick.outputs.number
-        uses: anthropics/claude-code-action@v1
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          prompt: ${{ steps.prompt.outputs.text }}
-          claude_args: >-
-            --model ${{ steps.pick.outputs.model }}
-            --max-turns 120
+          } > "$P"
+          node .github/scripts/claude-with-limit.mjs run "$(cat "$P")" \
+            --model "${{ steps.pick.outputs.model }}" \
+            --max-turns 120 \
             --allowedTools "Read,Edit,Write,Glob,Grep,Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git diff:*),Bash(git status:*)"
 
+      - name: Paused at the usage limit
+        if: steps.claude.outputs.stopped == 'true'
+        env:
+          USAGE: ${{ steps.claude.outputs.usage }}
+        run: |
+          gh issue comment ${{ steps.pick.outputs.number }} -R ${{ github.repository }} --body \
+            "Paused: Claude usage reached $USAGE (limit $(awk "BEGIN{print $USAGE_LIMIT*100}")%). The work was discarded; the next scheduled run starts this step again."
+
       - name: Gate – CI must pass
-        if: steps.pick.outputs.number
+        if: steps.pick.outputs.number && steps.claude.outputs.stopped != 'true'
         run: npm run ci
 
       - name: Open the PR
-        if: steps.pick.outputs.number
+        if: steps.pick.outputs.number && steps.claude.outputs.stopped != 'true'
         env:
           TITLE: ${{ steps.pick.outputs.title }}
         run: |
@@ -150,8 +157,8 @@ jobs:
           git push -q origin "$B"
           printf '%s\n\nCloses #%s\n\nModel: `%s` · `npm run ci` passed in the pipeline run: %s\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n' \
             "$SUMMARY" "$N" "${{ steps.pick.outputs.model }}" \
-            "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > body.md
-          gh pr create --head "$B" --title "$TITLE" --body-file body.md --label roadmap
+            "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > "$RUNNER_TEMP/body.md"
+          gh pr create --head "$B" --title "$TITLE" --body-file "$RUNNER_TEMP/body.md" --label roadmap
           # PRs opened with GITHUB_TOKEN don't trigger workflows; workflow_dispatch does.
           gh workflow run ci.yml --ref "$B"
 
