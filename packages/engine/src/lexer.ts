@@ -99,7 +99,7 @@ export function lex(src: string, locale: Locale): Token[] {
       i++;
       continue;
     }
-    throw new CalcSyntaxError(`Unerwartetes Zeichen „${c}“`);
+    throw new CalcSyntaxError(`Unexpected character "${c}"`);
   }
   toks.push({ type: 'eof', value: '', from: src.length, to: src.length });
   return toks;

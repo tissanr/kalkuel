@@ -1,0 +1,154 @@
+name: Roadmap pipeline
+
+# Works through issues labelled `roadmap`, one at a time, oldest first:
+# Claude implements the step → `npm run ci` must pass → a PR is opened → CI runs on it.
+# A person reviews and merges; the next run picks up the next issue.
+#
+# Triggers: every weekday morning, by hand (Actions → Run workflow), or by adding
+# the label `claude:run` to an issue.
+#
+# Needs the repository secret ANTHROPIC_API_KEY.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: 'Issue number (empty = next open roadmap issue)'
+        required: false
+  issues:
+    types: [labeled]
+
+concurrency:
+  group: roadmap
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write # to start CI on the new PR
+  id-token: write
+
+jobs:
+  step:
+    if: github.event_name != 'issues' || github.event.label.name == 'claude:run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Pick the issue
+        id: pick
+        env:
+          INPUT_ISSUE: ${{ github.event.inputs.issue || github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          R="${{ github.repository }}"
+          if [ "${{ github.event_name }}" = issues ]; then
+            gh issue edit "$INPUT_ISSUE" -R "$R" --remove-label 'claude:run'
+          fi
+          if [ -n "$(gh pr list -R "$R" --label roadmap --state open --json number -q '.[].number')" ]; then
+            echo "A roadmap PR is still open – waiting for it to be merged."; exit 0
+          fi
+          if [ -n "$INPUT_ISSUE" ]; then
+            N="$INPUT_ISSUE"
+          else
+            N=$(gh issue list -R "$R" --label roadmap --state open --json number,labels \
+              -q '[.[] | select([.labels[].name] | index("blocked") | not)] | sort_by(.number) | .[0].number // empty')
+          fi
+          if [ -z "$N" ]; then echo "No open roadmap issue."; exit 0; fi
+          gh issue view "$N" -R "$R" --json title,body,labels > "$RUNNER_TEMP/issue.json"
+          MODEL=$(jq -r '[.labels[].name | select(startswith("model:"))][0] // "model:sonnet" | sub("model:"; "")' "$RUNNER_TEMP/issue.json")
+          case "$MODEL" in
+            haiku) ID=claude-haiku-5-5 ;; opus) ID=claude-opus-5-5 ;; *) ID=claude-sonnet-5-5 ;;
+          esac
+          {
+            echo "number=$N"
+            echo "model=$ID"
+            echo "title=$(jq -r .title "$RUNNER_TEMP/issue.json")"
+            echo "branch=roadmap/issue-$N-${{ github.run_id }}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Issue #$N → $ID"
+
+      - uses: actions/checkout@v5
+        if: steps.pick.outputs.number
+      - uses: actions/setup-node@v5
+        if: steps.pick.outputs.number
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install
+        if: steps.pick.outputs.number
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          git checkout -b "${{ steps.pick.outputs.branch }}"
+
+      - name: Write the prompt
+        if: steps.pick.outputs.number
+        id: prompt
+        run: |
+          {
+            echo 'text<<PROMPT_EOF'
+            echo "Implement roadmap issue #${{ steps.pick.outputs.number }} in this repository."
+            echo
+            echo "Read ROADMAP.md first. Do exactly this one step, nothing more, as simply as possible."
+            echo "The step is done when:"
+            echo "- every acceptance test tagged with this step's name (e.g. bug: 'D2') passes and its tag is deleted"
+            echo "  (packages/engine/test/decimal.test.ts, apps/web/e2e/decimal.spec.ts)"
+            echo "- \`npm run ci\` passes (typecheck, engine tests, browser tests)"
+            echo "Do not weaken, skip or delete other tests. Do not commit or push; the workflow does that."
+            echo "When finished, write a short summary of what you changed to pr-summary.md in the repo root."
+            echo
+            echo "--- Issue ---"
+            jq -r '"# " + .title + "\n\n" + .body' "$RUNNER_TEMP/issue.json"
+            echo 'PROMPT_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Claude implements the step
+        if: steps.pick.outputs.number
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: ${{ steps.prompt.outputs.text }}
+          claude_args: >-
+            --model ${{ steps.pick.outputs.model }}
+            --max-turns 120
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git diff:*),Bash(git status:*)"
+
+      - name: Gate – CI must pass
+        if: steps.pick.outputs.number
+        run: npm run ci
+
+      - name: Open the PR
+        if: steps.pick.outputs.number
+        env:
+          TITLE: ${{ steps.pick.outputs.title }}
+        run: |
+          set -euo pipefail
+          N=${{ steps.pick.outputs.number }}
+          B="${{ steps.pick.outputs.branch }}"
+          SUMMARY=$(cat pr-summary.md 2>/dev/null || echo "(no summary)"); rm -f pr-summary.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then echo "Claude made no changes." >&2; exit 1; fi
+          git commit -q -m "$TITLE" -m "Closes #$N" -m "Co-Authored-By: Claude <noreply@anthropic.com>"
+          git push -q origin "$B"
+          printf '%s\n\nCloses #%s\n\nModel: `%s` · `npm run ci` passed in the pipeline run: %s\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n' \
+            "$SUMMARY" "$N" "${{ steps.pick.outputs.model }}" \
+            "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > body.md
+          gh pr create --head "$B" --title "$TITLE" --body-file body.md --label roadmap
+          # PRs opened with GITHUB_TOKEN don't trigger workflows; workflow_dispatch does.
+          gh workflow run ci.yml --ref "$B"
+
+      - name: Mark the issue blocked on failure
+        if: failure() && steps.pick.outputs.number
+        run: |
+          gh issue edit ${{ steps.pick.outputs.number }} -R ${{ github.repository }} --add-label blocked
+          gh issue comment ${{ steps.pick.outputs.number }} -R ${{ github.repository }} --body \
+            "The pipeline could not finish this step: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          Remove the \`blocked\` label to let the scheduled run try again, or add \`claude:run\` to retry now."

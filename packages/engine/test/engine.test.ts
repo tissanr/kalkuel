@@ -60,7 +60,7 @@ describe('units', () => {
     ['32 h/Woche * 6 Wochen', '192 h'],
     ['4 m * 5 m * 38 €/m²', '760,00 €'],
     ['20 m² / 4 m', '5 m'],
-    ['5 kg + 3 km', 'ERR: Einheiten passen nicht zusammen'],
+    ['5 kg + 3 km', 'ERR: Units do not match'],
   ])('%s → %s', (src, out) => expect(last(src)).toBe(out));
 });
 
@@ -75,47 +75,59 @@ describe('currencies', () => {
 
 describe('document', () => {
   it('variables', () => {
-    expect(last('miete = 1.250 €\nnebenkosten = 280 €\nmiete + nebenkosten')).toBe('1.530,00 €');
+    expect(last('rent = 1.250 €\nutilities = 280 €\nrent + utilities')).toBe('1.530,00 €');
   });
   it('prev, sum, avg and blocks', () => {
     expect(last('10\nprev * 2')).toBe('20');
-    expect(last('Hotel: 300 €\nFlug: 450 €\nsum')).toBe('750,00 €');
+    expect(last('Hotel: 300 €\nFlight: 450 €\nsum')).toBe('750,00 €');
     expect(last('10\n\n5\nsum')).toBe('5');
     expect(last('2\n4\navg')).toBe('3');
     expect(last('## A\n10\n## B\n5\nsum')).toBe('5');
   });
   it('labels, lists and quotes', () => {
     expect(last('- Hotel: 3 * 89 €')).toBe('267,00 €');
-    expect(last('- **Gesamt:** 2 * 3')).toBe('6');
+    expect(last('- **Total:** 2 * 3')).toBe('6');
     expect(last('1. 2 + 2')).toBe('4');
     expect(last('- [ ] 7 * 6')).toBe('42');
     expect(last('> 1 + 1')).toBe('2');
   });
   it('ignores prose', () => {
+    expect(last('This is a sentence.')).toBeUndefined();
+    expect(last('Meeting 3 - 4 pm')).toBeUndefined();
+    // German prose is ignored too
     expect(last('Das ist ein Satz.')).toBeUndefined();
+    expect(last('Termin 3 - 4 Uhr')).toBeUndefined();
+    expect(last('1. Einkauf')).toBeUndefined();
+    expect(last('Wir treffen uns um 10:30')).toBeUndefined();
+    expect(last('Stunden')).toBeUndefined();
     expect(last('Termin 3 - 4 Uhr')).toBeUndefined();
     expect(last('24.12.2025')).toBeUndefined();
     expect(last('Stunden')).toBeUndefined();
-    expect(last('1. Einkauf')).toBeUndefined();
+    expect(last('1. Groceries')).toBeUndefined();
     expect(last('# 2 + 2')).toBeUndefined();
-    expect(last('Wir treffen uns um 10:30')).toBeUndefined();
+    expect(last('We meet at 10:30')).toBeUndefined();
   });
   it('comments', () => {
-    expect(last('2 * 3 // sechs')).toBe('6');
+    expect(last('2 * 3 // six')).toBe('6');
   });
   it('fenced code', () => {
     expect(last('```js\n1 + 1')).toBeUndefined();
-    expect(last('```calc\nfoo + 1')).toBe('ERR: Unbekannt: foo');
+    expect(last('```calc\nfoo + 1')).toBe('ERR: Unknown: foo');
     expect(last('```calc\na = 2\na * 3')).toBe('6');
   });
   it('inline expressions', () => {
-    const r = evaluateDocument('x = 5\nDas ergibt `= x * 2` Stück und `= nix`.');
-    expect(r.lines[1]?.inline.map((i) => i.text ?? i.error)).toEqual(['10', 'Unbekannt: nix']);
+    const r = evaluateDocument('x = 5\nThat makes `= x * 2` pieces and `= nope`.');
+    expect(r.lines[1]?.inline.map((i) => i.text ?? i.error)).toEqual(['10', 'Unknown: nope']);
   });
   it('variable info and spans', () => {
-    const r = evaluateDocument('satz = 95 €/h');
-    expect(r.vars.get('satz')).toEqual({ line: 0, text: '95 €/h' });
+    const r = evaluateDocument('rate = 95 €/h');
+    expect(r.vars.get('rate')).toEqual({ line: 0, text: '95 €/h' });
     expect(r.lines[0]?.spans.map((s) => s.type)).toEqual(['variable', 'operator', 'number', 'unit', 'operator', 'unit']);
+  });
+  it('defaults to English number format', () => {
+    expect(evaluateDocument('1,250.5 + 1').lines[0]?.text).toBe('1,251.5');
+    expect(evaluateDocument('100 € * 2').lines[0]?.text).toBe('€200.00');
+    expect(evaluateDocument('---\nlocale: de\n---\n1.250,5 + 1').lines[3]?.text).toBe('1.251,5');
   });
   it('locale from frontmatter', () => {
     expect(last('---\nlocale: en-US\n---\n1,250.5 + 1')).toBe('1,251.5');

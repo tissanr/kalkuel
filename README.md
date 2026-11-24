@@ -1,24 +1,27 @@
 # Kalkül
 
-Markdown-Editor, der rechnet – Notizen und Rechnungen in einem Dokument, inspiriert von Numi. Prototyp. Spezifikation: [SPEC.md](SPEC.md).
+A Markdown editor that calculates – notes and calculations in one document, inspired by Numi. Prototype. Specification: [SPEC.md](SPEC.md). Next up: [ROADMAP.md](ROADMAP.md).
 
 ```bash
 npm install
-npm run dev     # Editor auf http://localhost:5173
-npm test        # Engine-Tests
-npm run build   # Produktions-Build nach apps/web/dist
+npm run dev        # editor at http://localhost:5173
+npm test           # engine tests
+npm run test:e2e   # browser tests (Playwright)
+npm run ci         # typecheck + all tests, same as GitHub CI
+npm run build      # production build to apps/web/dist
 ```
 
-## Aufbau
+## Structure
 
-- `packages/engine` – Rechen-Engine ohne UI (Lexer, Parser, Einheiten, Währungen, Markdown-Zeilenerkennung)
-- `apps/web` – Editor (Vite + CodeMirror 6) mit Live Preview, Ergebnisspalte, Autovervollständigung
+- `packages/engine` – calculation engine without UI (lexer, parser, units, currencies, Markdown line detection)
+- `apps/web` – editor (Vite + CodeMirror 6) with live preview, result column, autocompletion, light/dark theme
 
-## Was gerechnet wird
+## What gets calculated
 
-- Jede Zeile, die vollständig als Rechnung lesbar ist (Prosa wird ignoriert); `Label: ausdruck` und Listenpunkte gehen auch
-- Jede Zeile in ```` ```calc ````-Blöcken
-- Inline im Text: `` `= ausdruck` ``
-- Variablen (`satz = 95 €/h`), `prev`, `sum`/`gesamt`, `avg` (bis zur letzten Leerzeile/Überschrift)
-- Prozent (`20 % von 150`, `+ 19 %`, `5 % off`, `50 als % von 200`), Einheiten, Währungen (EZB-Kurse), `in hex/bin`
-- Zahlenformat Deutsch (`1.234,56`); per Frontmatter `locale: en` umschaltbar. Funktionsargumente mit `;` oder `, ` trennen.
+- Every line that reads entirely as a calculation (prose is ignored); `Label: expression` and list items work too
+- Every line in ```` ```calc ```` blocks
+- Inline in text: `` `= expression` ``
+- Variables (`rate = 95 €/h`), `prev`, `sum`/`total`, `avg` (up to the last blank line/heading)
+- Percentages (`20 % of 150`, `+ 19 %`, `5 % off`, `50 as % of 200`), units, currencies (ECB rates), `in hex/bin`
+- Keywords in English and German (`of`/`von`, `as`/`als`, `sum`/`summe` …)
+- Number format English by default (`1,234.56`); frontmatter `locale: de` switches to German (`1.234,56`, function arguments separated with `;`).

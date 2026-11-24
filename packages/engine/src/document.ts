@@ -147,7 +147,7 @@ function readFrontmatter(lines: string[]): { end: number; locale?: Locale } {
 export function evaluateDocument(src: string, opts: DocOptions = {}): DocResult {
   const lines = src.split('\n');
   const fm = readFrontmatter(lines);
-  const locale: Locale = fm.locale ?? opts.locale ?? 'de';
+  const locale: Locale = fm.locale ?? opts.locale ?? 'en';
   const result: DocResult = { lines: new Array(lines.length), vars: new Map(), locale };
   const scope = createScope();
   let fence: { marker: string; calc: boolean } | undefined;

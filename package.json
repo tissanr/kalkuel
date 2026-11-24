@@ -2,10 +2,16 @@
   "name": "kalkuel",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*", "apps/*"],
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
     "dev": "npm run dev -w @kalkuel/web",
     "build": "npm run build -w @kalkuel/web",
-    "test": "npm test -w @kalkuel/engine"
+    "typecheck": "npm run typecheck -w @kalkuel/engine && tsc --noEmit -p apps/web",
+    "test": "npm test -w @kalkuel/engine",
+    "test:e2e": "npm run test:e2e -w @kalkuel/web",
+    "ci": "npm run typecheck && npm test && npm run test:e2e"
   }
 }

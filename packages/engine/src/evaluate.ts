@@ -105,14 +105,14 @@ function simplify(terms: UnitTerm[], byDims = true): UnitTerm[] {
 
 function displayIn(n: NumV, terms: UnitTerm[]): number {
   if (isPlain(n)) return n.value;
-  if (!eqDims(n.dims, termsDims(terms))) throw new CalcError('Einheiten passen nicht zusammen');
+  if (!eqDims(n.dims, termsDims(terms))) throw new CalcError('Units do not match');
   return toDisplay(n, terms);
 }
 
 function addSub(a: Value, b: Value, sign: 1 | -1): Value {
   if (a.kind === 'pct' && b.kind === 'pct') return pct(a.value + sign * b.value);
   if (a.kind === 'num' && b.kind === 'pct') return mapDisplay(a, (x) => x * (1 + (sign * b.value) / 100));
-  if (a.kind === 'pct' || b.kind === 'pct') throw new CalcError('Prozent und Zahl lassen sich so nicht verrechnen');
+  if (a.kind === 'pct' || b.kind === 'pct') throw new CalcError('Cannot combine a percentage and a number like this');
   const terms = a.display.length ? a.display : b.display;
   return { ...fromDisplay(displayIn(a, terms) + sign * displayIn(b, terms), terms), fmt: a.fmt ?? b.fmt };
 }
@@ -131,9 +131,9 @@ function div(a: Value, b: Value): Value {
     if (a.kind === 'pct') return plain(a.value / b.value);
     return div(a, plain(b.value / 100));
   }
-  if (b.value === 0) throw new CalcError('Division durch 0');
+  if (b.value === 0) throw new CalcError('Division by zero');
   if (isPlain(b)) return mapDisplay(a, (x) => x / b.value);
-  if (a.kind === 'pct') throw new CalcError('Ungültige Prozentrechnung');
+  if (a.kind === 'pct') throw new CalcError('Invalid percentage calculation');
   return {
     kind: 'num',
     value: a.value / b.value,
@@ -143,40 +143,40 @@ function div(a: Value, b: Value): Value {
 }
 
 function pow(a: Value, b: Value): Value {
-  if (!isPlain(b)) throw new CalcError('Exponent muss eine Zahl ohne Einheit sein');
+  if (!isPlain(b)) throw new CalcError('Exponent must be a number without a unit');
   const n = b.value;
-  if (a.kind === 'pct') throw new CalcError('Prozent lässt sich nicht potenzieren');
+  if (a.kind === 'pct') throw new CalcError('Cannot raise a percentage to a power');
   if (isPlain(a)) return plain(Math.pow(a.value, n));
   const display = a.display.map((t) => ({ unit: t.unit, power: Math.round(t.power * n * 1e9) / 1e9 }));
-  if (display.some((t) => !Number.isInteger(t.power))) throw new CalcError('Einheit lässt sich so nicht potenzieren');
+  if (display.some((t) => !Number.isInteger(t.power))) throw new CalcError('Cannot raise this unit to that power');
   return { kind: 'num', value: Math.pow(a.value, n), dims: scaleDims(a.dims, n), display };
 }
 
 function mod(a: Value, b: Value): Value {
-  if (a.kind !== 'num' || b.kind !== 'num') throw new CalcError('mod erwartet Zahlen');
+  if (a.kind !== 'num' || b.kind !== 'num') throw new CalcError('mod expects numbers');
   const terms = a.display.length ? a.display : b.display;
   const y = displayIn(b, terms);
-  if (y === 0) throw new CalcError('Division durch 0');
+  if (y === 0) throw new CalcError('Division by zero');
   return fromDisplay(displayIn(a, terms) % y, terms);
 }
 
 function compare(a: Value, b: Value): number {
   if (a.kind === 'pct' && b.kind === 'pct') return a.value - b.value;
   if (a.kind === 'num' && b.kind === 'num' && eqDims(a.dims, b.dims)) return a.value - b.value;
-  throw new CalcError('Werte nicht vergleichbar');
+  throw new CalcError('Values are not comparable');
 }
 
 function convert(v: Value, target: Target): Value {
   if (target.kind === 'pct') {
     if (v.kind === 'pct') return v;
     if (isPlain(v)) return pct(v.value * 100);
-    throw new CalcError('Nur Zahlen ohne Einheit lassen sich in % umrechnen');
+    throw new CalcError('Only numbers without a unit can be converted to %');
   }
-  if (v.kind === 'pct') throw new CalcError('Prozentwerte haben keine Einheit');
+  if (v.kind === 'pct') throw new CalcError('Percentages have no unit');
   if (target.kind === 'fmt') return { ...v, fmt: target.fmt === 'dec' ? undefined : target.fmt };
   const dims = termsDims(target.terms);
   if (isPlain(v)) return fromDisplay(v.value, target.terms);
-  if (!eqDims(v.dims, dims)) throw new CalcError('Einheiten passen nicht zusammen');
+  if (!eqDims(v.dims, dims)) throw new CalcError('Units do not match');
   return { kind: 'num', value: v.value, dims, display: target.terms };
 }
 
@@ -184,11 +184,11 @@ function convert(v: Value, target: Target): Value {
 // Functions
 
 const plainArg = (v: Value | undefined, fn: string) => {
-  if (!v || !isPlain(v)) throw new CalcError(`${fn}() erwartet eine Zahl ohne Einheit`);
+  if (!v || !isPlain(v)) throw new CalcError(`${fn}() expects a number without a unit`);
   return v.value;
 };
 const first = (args: Value[], fn: string) => {
-  if (!args[0]) throw new CalcError(`${fn}() braucht ein Argument`);
+  if (!args[0]) throw new CalcError(`${fn}() needs an argument`);
   return args[0];
 };
 const roundFn = (f: (x: number) => number, fn: string) => (args: Value[]) => {
@@ -197,7 +197,7 @@ const roundFn = (f: (x: number) => number, fn: string) => (args: Value[]) => {
   return mapDisplay(first(args, fn), (x) => f(x * s) / s);
 };
 const pickFn = (sign: 1 | -1, fn: string) => (args: Value[]) => {
-  if (!args.length) throw new CalcError(`${fn}() braucht Argumente`);
+  if (!args.length) throw new CalcError(`${fn}() needs arguments`);
   return args.reduce((a, b) => (sign * compare(a, b) >= 0 ? a : b));
 };
 const mathFn = (f: (x: number) => number, fn: string) => (args: Value[]) => plain(f(plainArg(args[0], fn)));
@@ -239,18 +239,18 @@ function resolve(name: string, scope: Scope): Value {
   if (name in CONSTANTS) return plain(CONSTANTS[name]);
   const lower = name.toLowerCase();
   if (PREV_WORDS.includes(lower)) {
-    if (!scope.prev) throw new CalcError('Kein vorheriges Ergebnis');
+    if (!scope.prev) throw new CalcError('No previous result');
     return scope.prev;
   }
   if (SUM_WORDS.includes(lower)) return sumBlock(scope);
   if (AVG_WORDS.includes(lower)) {
     const n = scope.block.filter((v) => v.kind === 'num').length;
-    if (!n) throw new CalcError('Keine Werte für den Durchschnitt');
+    if (!n) throw new CalcError('No values to average');
     return div(sumBlock(scope), plain(n));
   }
   const u = lookupUnit(name);
   if (u) return { ...fromDisplay(1, [{ unit: u, power: 1 }]), bare: true };
-  throw new CalcError(`Unbekannt: ${name}`);
+  throw new CalcError(`Unknown: ${name}`);
 }
 
 export function evaluate(node: Node, scope: Scope): Value {
@@ -260,14 +260,14 @@ export function evaluate(node: Node, scope: Scope): Value {
       return plain(node.v);
     case 'unit': {
       const v = ev(node.e);
-      if (!isPlain(v)) throw new CalcError('Wert hat schon eine Einheit');
+      if (!isPlain(v)) throw new CalcError('Value already has a unit');
       return fromDisplay(v.value, node.terms);
     }
     case 'neg':
       return mapDisplay(ev(node.e), (x) => -x);
     case 'pct': {
       const v = ev(node.e);
-      if (!isPlain(v)) throw new CalcError('% nur nach Zahlen ohne Einheit');
+      if (!isPlain(v)) throw new CalcError('% only after numbers without a unit');
       return pct(v.value);
     }
     case 'bin': {
@@ -286,8 +286,8 @@ export function evaluate(node: Node, scope: Scope): Value {
     case 'pctop': {
       const l = ev(node.l);
       const r = ev(node.r);
-      if (l.kind !== 'pct') throw new CalcError(`„${node.op}“ erwartet einen Prozentwert davor`);
-      if (r.kind !== 'num') throw new CalcError('Prozent wovon?');
+      if (l.kind !== 'pct') throw new CalcError(`"${node.op}" expects a percentage before it`);
+      if (r.kind !== 'num') throw new CalcError('Percent of what?');
       const p = l.value / 100;
       const f = node.op === 'of' ? p : node.op === 'off' ? 1 - p : 1 + p;
       return mapDisplay(r, (x) => x * f);
@@ -297,15 +297,15 @@ export function evaluate(node: Node, scope: Scope): Value {
     case 'asPctOf': {
       const a = ev(node.l);
       const b = ev(node.r);
-      if (a.kind !== 'num' || b.kind !== 'num' || !eqDims(a.dims, b.dims)) throw new CalcError('Einheiten passen nicht zusammen');
-      if (b.value === 0) throw new CalcError('Division durch 0');
+      if (a.kind !== 'num' || b.kind !== 'num' || !eqDims(a.dims, b.dims)) throw new CalcError('Units do not match');
+      if (b.value === 0) throw new CalcError('Division by zero');
       return pct((a.value / b.value) * 100);
     }
     case 'ident':
       return resolve(node.name, scope);
     case 'call': {
       const fn = FUNCTIONS[node.name.toLowerCase()];
-      if (!fn) throw new CalcError(`Unbekannte Funktion: ${node.name}`);
+      if (!fn) throw new CalcError(`Unknown function: ${node.name}`);
       return fn(node.args.map(ev));
     }
     case 'assign': {
@@ -314,10 +314,10 @@ export function evaluate(node: Node, scope: Scope): Value {
       return v;
     }
   }
-  throw new CalcError('Unbekannter Ausdruck');
+  throw new CalcError('Unknown expression');
 }
 
 export function checkFinite(v: Value): Value {
-  if (!Number.isFinite(v.value)) throw new CalcError('Ergebnis ist nicht endlich');
+  if (!Number.isFinite(v.value)) throw new CalcError('Result is not finite');
   return v;
 }

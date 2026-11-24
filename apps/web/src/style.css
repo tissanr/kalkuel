@@ -1,50 +1,32 @@
 :root {
-  --bg: #fbfaf7;
-  --panel: #f3f1ec;
-  --text: #24231f;
-  --heading: #15140f;
-  --muted: #8b877d;
-  --border: #e4e0d6;
-  --accent: #2f6fdb;
-  --result: #1f7a4d;
-  --result-bg: #e8f3ec;
-  --error: #b5452f;
-  --error-bg: #fbecE8;
-  --number: #9a5b00;
-  --unit: #2f6fdb;
-  --variable: #7b3fb5;
-  --keyword: #b03a6c;
-  --code-bg: #f1eee7;
-  --active-line: #f4f1ea;
-  --selection: #d7e4fb;
+  --bg: light-dark(#fbfaf7, #1b1b1d);
+  --panel: light-dark(#f3f1ec, #232326);
+  --text: light-dark(#24231f, #e3e1dc);
+  --heading: light-dark(#15140f, #f4f2ee);
+  --muted: light-dark(#8b877d, #8c8a85);
+  --border: light-dark(#e4e0d6, #34343a);
+  --accent: light-dark(#2f6fdb, #79a7ff);
+  --result: light-dark(#1f7a4d, #6fd39c);
+  --result-bg: light-dark(#e8f3ec, #1f3329);
+  --error: light-dark(#b5452f, #ff8a70);
+  --error-bg: light-dark(#fbecE8, #3a2420);
+  --number: light-dark(#9a5b00, #f0b45c);
+  --unit: light-dark(#2f6fdb, #79a7ff);
+  --variable: light-dark(#7b3fb5, #c99bf5);
+  --keyword: light-dark(#b03a6c, #f28bb5);
+  --code-bg: light-dark(#f1eee7, #26262a);
+  --active-line: light-dark(#f4f1ea, #222225);
+  --selection: light-dark(#d7e4fb, #2c3d5c);
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
   --result-col: 210px;
+  color-scheme: light dark;
+}
+:root[data-theme='light'] {
   color-scheme: light;
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1b1b1d;
-    --panel: #232326;
-    --text: #e3e1dc;
-    --heading: #f4f2ee;
-    --muted: #8c8a85;
-    --border: #34343a;
-    --accent: #79a7ff;
-    --result: #6fd39c;
-    --result-bg: #1f3329;
-    --error: #ff8a70;
-    --error-bg: #3a2420;
-    --number: #f0b45c;
-    --unit: #79a7ff;
-    --variable: #c99bf5;
-    --keyword: #f28bb5;
-    --code-bg: #26262a;
-    --active-line: #222225;
-    --selection: #2c3d5c;
-    color-scheme: dark;
-  }
+:root[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 * {
@@ -116,6 +98,9 @@ body {
 .actions button:hover {
   border-color: var(--muted);
 }
+.actions button.theme {
+  min-width: 82px;
+}
 .sep {
   width: 1px;
   height: 18px;
@@ -164,7 +149,7 @@ body {
 .hide-results #editor .cm-line {
   padding-right: 24px;
 }
-.cm-activeLine {
+#editor .cm-activeLine {
   background: var(--active-line);
 }
 .cm-selectionBackground,
