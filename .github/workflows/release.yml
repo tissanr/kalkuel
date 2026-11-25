@@ -1,0 +1,81 @@
+name: Release
+
+# Brings `dev` to `main` regularly:
+# - every Monday (or by hand) it opens a release PR dev → main, or updates the open one,
+#   listing what changed, and starts CI on it.
+# - a person merges it – with a merge commit, not squash, so dev and main stay in sync.
+# - after the merge, a GitHub release `vYYYY.MM.DD` is created from the PR description.
+
+on:
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write # to start CI on the release PR
+
+jobs:
+  open-pr:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Open or update the release PR
+        run: |
+          set -euo pipefail
+          R="${{ github.repository }}"
+          CHANGES=$(git log --no-merges --reverse --format='- %s' origin/main..origin/dev)
+          if [ -z "$CHANGES" ]; then echo "dev has nothing new for main."; exit 0; fi
+          {
+            echo "## Changes"
+            echo
+            echo "$CHANGES"
+            echo
+            echo "Merge with **Create a merge commit** (not squash), so \`dev\` and \`main\` stay in sync."
+            echo
+            echo "🤖 Generated with [Claude Code](https://claude.com/claude-code)"
+          } > "$RUNNER_TEMP/body.md"
+          gh label create release -R "$R" --color 0E8A16 --description 'Release PR dev → main' 2>/dev/null || true
+          PR=$(gh pr list -R "$R" --base main --head dev --state open --json url -q '.[0].url // empty')
+          if [ -n "$PR" ]; then
+            gh pr edit "$PR" --body-file "$RUNNER_TEMP/body.md"
+          else
+            PR=$(gh pr create -R "$R" --base main --head dev --label release \
+              --title "Release $(date -u +%Y-%m-%d)" --body-file "$RUNNER_TEMP/body.md")
+          fi
+          echo "Release PR: $PR"
+          # PRs and pushes made with GITHUB_TOKEN don't trigger workflows; workflow_dispatch does.
+          gh workflow run ci.yml -R "$R" --ref dev
+
+  publish:
+    if: >-
+      github.event_name == 'pull_request' && github.event.pull_request.merged &&
+      github.event.pull_request.head.ref == 'dev'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BODY: ${{ github.event.pull_request.body }}
+    steps:
+      - name: Create the GitHub release
+        run: |
+          set -euo pipefail
+          R="${{ github.repository }}"
+          TAG="v$(date -u +%Y.%m.%d)"
+          i=2; BASE_TAG="$TAG"
+          while gh release view "$TAG" -R "$R" >/dev/null 2>&1; do TAG="$BASE_TAG.$i"; i=$((i+1)); done
+          printf '%s\n' "$BODY" | sed '/^Merge with \*\*Create a merge commit/,$d' > "$RUNNER_TEMP/notes.md"
+          gh release create "$TAG" -R "$R" --target "${{ github.event.pull_request.merge_commit_sha }}" \
+            --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
