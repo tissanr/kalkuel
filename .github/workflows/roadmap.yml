@@ -1,8 +1,9 @@
 name: Roadmap pipeline
 
 # Works through issues labelled `roadmap`, one at a time, oldest first:
-# Claude implements the step → `npm run ci` must pass → a PR is opened → CI runs on it.
-# A person reviews and merges; the next run picks up the next issue.
+# Claude implements the step → `npm run ci` must pass → a PR into `dev` is opened
+# and merged right away → the issue is closed. The next run picks up the next issue.
+# `dev` reaches `main` through the release PR (release.yml), which a person merges.
 #
 # Triggers: every weekday morning, by hand (Actions → Run workflow), or by adding
 # the label `claude:run` to an issue.
@@ -30,10 +31,10 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
-  actions: write # to start CI on the new PR
 
 env:
   USAGE_LIMIT: '0.75'
+  BASE: dev
 
 jobs:
   step:
@@ -52,6 +53,8 @@ jobs:
           fi
 
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.BASE }}
       - uses: actions/setup-node@v5
         with:
           node-version: 24
@@ -74,7 +77,7 @@ jobs:
             gh issue edit "$INPUT_ISSUE" -R "$R" --remove-label 'claude:run'
           fi
           if [ -n "$(gh pr list -R "$R" --label roadmap --state open --json number -q '.[].number')" ]; then
-            echo "A roadmap PR is still open – waiting for it to be merged."; exit 0
+            echo "A roadmap PR is still open (its merge into $BASE failed?) – merge or close it first."; exit 0
           fi
           if [ -n "$INPUT_ISSUE" ]; then
             N="$INPUT_ISSUE"
@@ -140,7 +143,7 @@ jobs:
         if: steps.pick.outputs.number && steps.claude.outputs.stopped != 'true'
         run: npm run ci
 
-      - name: Open the PR
+      - name: Open the PR and merge it into dev
         if: steps.pick.outputs.number && steps.claude.outputs.stopped != 'true'
         env:
           TITLE: ${{ steps.pick.outputs.title }}
@@ -158,9 +161,11 @@ jobs:
           printf '%s\n\nCloses #%s\n\nModel: `%s` · `npm run ci` passed in the pipeline run: %s\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n' \
             "$SUMMARY" "$N" "${{ steps.pick.outputs.model }}" \
             "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > "$RUNNER_TEMP/body.md"
-          gh pr create --head "$B" --title "$TITLE" --body-file "$RUNNER_TEMP/body.md" --label roadmap
-          # PRs opened with GITHUB_TOKEN don't trigger workflows; workflow_dispatch does.
-          gh workflow run ci.yml --ref "$B"
+          PR=$(gh pr create --base "$BASE" --head "$B" --title "$TITLE" --body-file "$RUNNER_TEMP/body.md" --label roadmap)
+          # The gate above already ran the full CI on exactly this commit.
+          gh pr merge "$PR" --squash --delete-branch
+          # "Closes #N" only fires on the default branch, so close the issue explicitly.
+          gh issue close "$N" -R "${{ github.repository }}" --comment "Merged into \`$BASE\` in $PR. Reaches \`main\` with the next release."
 
       - name: Mark the issue blocked on failure
         if: failure() && steps.pick.outputs.number

@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-  workflow_dispatch: # started by the roadmap pipeline for its own PRs
+  workflow_dispatch: # started by release.yml: PRs opened with GITHUB_TOKEN don't trigger workflows
 
 jobs:
   test:
