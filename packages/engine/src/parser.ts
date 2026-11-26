@@ -1,4 +1,5 @@
 import { CalcSyntaxError, CURRENCY_SYMBOLS, type Token } from './lexer';
+import { D, type Decimal } from './num';
 import { eqDims, lookupUnit, termsDims, type UnitTerm } from './units';
 
 export type Fmt = 'hex' | 'bin' | 'oct' | 'sci' | 'dec';
@@ -9,7 +10,7 @@ export type Target =
   | { kind: 'fmt'; fmt: Fmt };
 
 export type Node =
-  | { t: 'num'; v: number }
+  | { t: 'num'; v: Decimal }
   | { t: 'unit'; e: Node; terms: UnitTerm[] }
   | { t: 'ident'; name: string }
   | { t: 'call'; name: string; args: Node[] }
@@ -24,10 +25,11 @@ export type Node =
 export const CONV_WORDS = new Set(['in', 'to', 'as', 'als', 'into']);
 export const PCTOP_WORDS: Record<string, 'of' | 'off' | 'on'> = { of: 'of', von: 'of', off: 'off', on: 'on', auf: 'on' };
 export const FMT_WORDS = new Set<string>(['hex', 'bin', 'oct', 'sci', 'dec']);
-export const SCALE_WORDS: Record<string, number> = {
-  Tsd: 1e3, tsd: 1e3, thousand: 1e3, Tausend: 1e3,
-  Mio: 1e6, mio: 1e6, million: 1e6, millions: 1e6, Million: 1e6, Millionen: 1e6,
-  Mrd: 1e9, mrd: 1e9, billion: 1e9, Milliarde: 1e9, Milliarden: 1e9,
+const TSD = D(1e3), MIO = D(1e6), MRD = D(1e9);
+export const SCALE_WORDS: Record<string, Decimal> = {
+  Tsd: TSD, tsd: TSD, thousand: TSD, Tausend: TSD,
+  Mio: MIO, mio: MIO, million: MIO, millions: MIO, Million: MIO, Millionen: MIO,
+  Mrd: MRD, mrd: MRD, billion: MRD, Milliarde: MRD, Milliarden: MRD,
 };
 export const KEYWORDS = new Set<string>([...CONV_WORDS, ...Object.keys(PCTOP_WORDS), 'mod']);
 
@@ -158,7 +160,7 @@ class Parser {
       const s = this.peek();
       if (s.type === 'ident' && SCALE_WORDS[s.value]) {
         this.next();
-        node = { t: 'num', v: t.num! * SCALE_WORDS[s.value] };
+        node = { t: 'num', v: t.num!.times(SCALE_WORDS[s.value]) };
       }
       if (this.isOp('(')) return { t: 'bin', op: '*', l: node, r: this.primary() };
       const terms = this.attachedUnit();
@@ -221,7 +223,7 @@ class Parser {
     let power = 1;
     if (this.isOp('^') && this.peek(1).type === 'num') {
       this.next();
-      power = this.next().num!;
+      power = this.next().num!.toNumber();
     }
     return [{ unit: u, power }];
   }
@@ -238,7 +240,7 @@ class Parser {
       let p = 1;
       if (this.isOp('^') && this.peek(1).type === 'num') {
         this.next();
-        p = this.next().num!;
+        p = this.next().num!.toNumber();
       }
       terms.push({ unit: u, power: p * sign });
       if (this.isOp('/')) {

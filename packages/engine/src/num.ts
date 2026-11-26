@@ -6,6 +6,8 @@ export const Decimal = DecimalJs.clone({
   rounding: DecimalJs.ROUND_HALF_UP,
 });
 export type Decimal = DecimalJs;
+export type DecimalValue = DecimalJs.Value;
+export type Rounding = DecimalJs.Rounding;
 
 /** Shorthand for `new Decimal(x)`. */
-export const D = (x: DecimalJs.Value): Decimal => new Decimal(x);
+export const D = (x: DecimalValue): Decimal => new Decimal(x);
