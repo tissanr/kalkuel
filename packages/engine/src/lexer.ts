@@ -1,9 +1,11 @@
+import { D, type Decimal } from './num';
+
 export type Locale = 'de' | 'en';
 
 export interface Token {
   type: 'num' | 'ident' | 'op' | 'eof';
   value: string;
-  num?: number;
+  num?: Decimal;
   from: number;
   to: number;
 }
@@ -27,11 +29,11 @@ const isDigit = (c: string | undefined) => c !== undefined && c >= '0' && c <= '
  * thousands separator, otherwise a decimal point, so `1.5` also works).
  * Locale `en`: `1,234.56`.
  */
-function readNumber(src: string, start: number, locale: Locale): { num: number; end: number } {
+function readNumber(src: string, start: number, locale: Locale): { num: Decimal; end: number } {
   const radix = /^0([xX][0-9a-fA-F]+|[bB][01]+|[oO][0-7]+)/.exec(src.slice(start));
   if (radix) {
-    const base = { x: 16, b: 2, o: 8 }[radix[1][0].toLowerCase() as 'x' | 'b' | 'o'];
-    return { num: parseInt(radix[1].slice(1), base), end: start + radix[0].length };
+    const lit = '0' + radix[1][0].toLowerCase() + radix[1].slice(1);
+    return { num: D(BigInt(lit).toString()), end: start + radix[0].length };
   }
   const group = locale === 'de' ? '.' : ',';
   const dec = locale === 'de' ? ',' : '.';
@@ -52,10 +54,10 @@ function readNumber(src: string, start: number, locale: Locale): { num: number; 
     i += 2;
     while (isDigit(src[i])) s += src[i++];
   }
-  let num = parseFloat(s);
+  let num = D(s);
   // Directly attached scale suffix: 5k, 2M
   if ((src[i] === 'k' || src[i] === 'M') && !IDENT_CONT.test(src[i + 1] ?? '')) {
-    num *= src[i] === 'k' ? 1e3 : 1e6;
+    num = num.times(src[i] === 'k' ? 1e3 : 1e6);
     i++;
   }
   return { num, end: i };
