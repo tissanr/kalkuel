@@ -2,11 +2,14 @@ name: Roadmap pipeline
 
 # Works through issues labelled `roadmap`, one at a time, oldest first:
 # Claude implements the step → `npm run ci` must pass → a PR into `dev` is opened
-# and merged right away → the issue is closed. The next run picks up the next issue.
+# and merged right away → the issue is closed → the pipeline starts itself again for
+# the next issue. It keeps going until no issue is left, an issue is `blocked` (the
+# steps build on each other, so it waits for you), or the usage limit is reached.
 # `dev` reaches `main` through the release PR (release.yml), which a person merges.
 #
-# Triggers: every weekday morning, by hand (Actions → Run workflow), or by adding
-# the label `claude:run` to an issue.
+# Triggers: itself (next issue), hourly as a fallback (resumes after a usage pause –
+# a run with nothing to do takes seconds and no Claude usage), by hand (Actions →
+# Run workflow), or by adding the label `claude:run` to an issue.
 #
 # Runs on a Claude Pro/Max subscription: needs the secret CLAUDE_CODE_OAUTH_TOKEN
 # (from `claude setup-token`). Never uses more than USAGE_LIMIT of the subscription:
@@ -14,7 +17,7 @@ name: Roadmap pipeline
 
 on:
   schedule:
-    - cron: '0 6 * * 1-5'
+    - cron: '17 * * * *'
   workflow_dispatch:
     inputs:
       issue:
@@ -31,6 +34,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  actions: write # to start the next run
 
 env:
   USAGE_LIMIT: '0.75'
@@ -61,13 +65,8 @@ jobs:
           cache: npm
       - run: npm install -g @anthropic-ai/claude-code
 
-      - name: Check Claude usage
-        id: usage
-        run: node .github/scripts/claude-with-limit.mjs check
-
       - name: Pick the issue
         id: pick
-        if: steps.usage.outputs.stopped != 'true'
         env:
           INPUT_ISSUE: ${{ github.event.inputs.issue || github.event.issue.number }}
         run: |
@@ -82,8 +81,13 @@ jobs:
           if [ -n "$INPUT_ISSUE" ]; then
             N="$INPUT_ISSUE"
           else
-            N=$(gh issue list -R "$R" --label roadmap --state open --json number,labels \
-              -q '[.[] | select([.labels[].name] | index("blocked") | not)] | sort_by(.number) | .[0].number // empty')
+            # Oldest open issue. Steps build on each other: if it is blocked, wait.
+            gh issue list -R "$R" --label roadmap --state open --json number,labels \
+              -q 'sort_by(.number) | .[0] // empty' > "$RUNNER_TEMP/next.json"
+            N=$(jq -r '.number // empty' "$RUNNER_TEMP/next.json")
+            if [ -n "$N" ] && jq -e '[.labels[].name] | index("blocked")' "$RUNNER_TEMP/next.json" >/dev/null; then
+              echo "Issue #$N is blocked – waiting for it (remove the label or add claude:run)."; exit 0
+            fi
           fi
           if [ -z "$N" ]; then echo "No open roadmap issue."; exit 0; fi
           gh issue view "$N" -R "$R" --json title,body,labels > "$RUNNER_TEMP/issue.json"
@@ -99,8 +103,13 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "Issue #$N → $ID"
 
-      - name: Install
+      - name: Check Claude usage
+        id: usage
         if: steps.pick.outputs.number
+        run: node .github/scripts/claude-with-limit.mjs check
+
+      - name: Install
+        if: steps.pick.outputs.number && steps.usage.outputs.stopped != 'true'
         run: |
           npm ci
           npx playwright install --with-deps chromium
@@ -108,7 +117,7 @@ jobs:
 
       - name: Claude implements the step
         id: claude
-        if: steps.pick.outputs.number
+        if: steps.pick.outputs.number && steps.usage.outputs.stopped != 'true'
         run: |
           set -euo pipefail
           P="$RUNNER_TEMP/prompt.md"
@@ -140,11 +149,11 @@ jobs:
             "Paused: Claude usage reached $USAGE (limit $(awk "BEGIN{print $USAGE_LIMIT*100}")%). The work was discarded; the next scheduled run starts this step again."
 
       - name: Gate – CI must pass
-        if: steps.pick.outputs.number && steps.claude.outputs.stopped != 'true'
+        if: steps.claude.outcome == 'success' && steps.claude.outputs.stopped != 'true'
         run: npm run ci
 
       - name: Open the PR and merge it into dev
-        if: steps.pick.outputs.number && steps.claude.outputs.stopped != 'true'
+        if: steps.claude.outcome == 'success' && steps.claude.outputs.stopped != 'true'
         env:
           TITLE: ${{ steps.pick.outputs.title }}
         run: |
@@ -166,6 +175,8 @@ jobs:
           gh pr merge "$PR" --squash --delete-branch
           # "Closes #N" only fires on the default branch, so close the issue explicitly.
           gh issue close "$N" -R "${{ github.repository }}" --comment "Merged into \`$BASE\` in $PR. Reaches \`main\` with the next release."
+          # Runs started by GITHUB_TOKEN don't trigger workflows, except workflow_dispatch.
+          gh workflow run roadmap.yml -R "${{ github.repository }}" --ref "${{ github.ref_name }}"
 
       - name: Mark the issue blocked on failure
         if: failure() && steps.pick.outputs.number
