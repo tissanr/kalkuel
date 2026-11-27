@@ -3,7 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f5f0" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#161618" media="(prefers-color-scheme: dark)" />
     <title>Kalkül</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231f7a4d'/%3E%3Cpath d='M9 13h14M9 19h14' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
     <script>
       try {
         const t = localStorage.getItem('kalkuel:theme');
@@ -13,27 +19,42 @@
   </head>
   <body>
     <header class="bar">
-      <div class="brand">Kalk<span>ü</span>l</div>
+      <div class="brand">
+        <span class="logo" aria-hidden="true"></span>
+        <span class="wordmark">Kalk<span>ü</span>l</span>
+      </div>
       <div class="file">
+        <svg class="file-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.75h5.25L12.5 5v9.25H4z" /><path d="M9 1.75V5.25h3.5" /></svg>
         <span id="filename">Untitled.md</span>
-        <span id="dirty" class="dirty" title="Unsaved" hidden>●</span>
+        <span id="dirty" class="dirty" title="Unsaved changes" hidden></span>
       </div>
       <nav class="actions">
-        <button id="btn-new" type="button">New</button>
-        <button id="btn-open" type="button" title="Open (⌘O)">Open</button>
-        <button id="btn-save" type="button" title="Save (⌘S, ⌘⇧S = Save as)">Save</button>
-        <button id="btn-sample" type="button" title="Load example document">Example</button>
+        <div class="group" role="group" aria-label="File">
+          <button id="btn-new" type="button" title="New document">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" /></svg><span>New</span>
+          </button>
+          <button id="btn-open" type="button" title="Open (⌘O)">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 12.75V3.25h4l1.5 1.75h5.5v2" /><path d="M1.75 12.75 3.5 7.25h11l-1.75 5.5z" /></svg><span>Open</span>
+          </button>
+          <button id="btn-save" type="button" title="Save (⌘S, ⌘⇧S = Save as)">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8M4.75 6.75 8 10l3.25-3.25" /><path d="M2.5 11v2.5h11V11" /></svg><span>Save</span>
+          </button>
+        </div>
+        <button id="btn-sample" type="button" class="ghost" title="Load example document">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.75 9.6 6.4l4.65 1.6-4.65 1.6L8 14.25 6.4 9.6 1.75 8 6.4 6.4z" /></svg><span>Example</span>
+        </button>
         <span class="sep"></span>
-        <label class="toggle"><input type="checkbox" id="tg-preview" /> Live Preview</label>
-        <label class="toggle"><input type="checkbox" id="tg-results" /> Results</label>
-        <span class="sep"></span>
-        <button id="btn-theme" type="button" class="theme">Auto</button>
+        <label class="toggle" title="Hide Markdown syntax outside the cursor line"><input type="checkbox" id="tg-preview" role="switch" /><span><span class="opt">Live </span>Preview</span></label>
+        <label class="toggle" title="Show the result column"><input type="checkbox" id="tg-results" role="switch" /><span>Results</span></label>
       </nav>
+      <button id="btn-theme" type="button" class="theme">Auto</button>
     </header>
     <main id="editor"></main>
     <footer class="status">
-      <span id="status-rates">Loading exchange rates …</span>
-      <span class="hint">Click a result to copy · ⌘⇧C copies the line’s result · ```calc for calculation blocks · `= expression` in text</span>
+      <span class="rates"><span class="dot" aria-hidden="true"></span><span id="status-rates">Loading exchange rates …</span></span>
+      <span class="hint"
+        >Click a result to copy <kbd>⌘⇧C</kbd> copies the line’s result <code>```calc</code> calculation blocks <code>`= expr`</code> inline</span
+      >
     </footer>
     <script type="module" src="/src/main.ts"></script>
   </body>

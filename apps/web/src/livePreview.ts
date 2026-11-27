@@ -67,7 +67,16 @@ function build(view: EditorView, hideMarkup: boolean): DecorationSet {
           return;
         }
         if (name === 'FencedCode') {
-          styleLines(node.from, node.to, 'cm-md-codeblock');
+          const first = state.doc.lineAt(node.from).number;
+          const last = state.doc.lineAt(node.to).number;
+          for (let l = first; l <= last; l++) {
+            if (styledLines.has(l)) continue;
+            styledLines.add(l);
+            let cls = 'cm-md-codeblock';
+            if (l === first) cls += ' cm-md-codeblock-first';
+            if (l === last) cls += ' cm-md-codeblock-last';
+            decos.push(lineDeco(cls).range(state.doc.line(l).from));
+          }
           return false;
         }
         if (name === 'Blockquote') styleLines(node.from, node.to, 'cm-md-quote');
@@ -78,6 +87,12 @@ function build(view: EditorView, hideMarkup: boolean): DecorationSet {
           case 'HeaderMark': {
             const parent = node.node.parent?.name ?? '';
             if (!parent.startsWith('ATXHeading')) break;
+            let end = node.to;
+            if (state.doc.sliceString(end, end + 1) === ' ') end++;
+            decos.push(hide.range(node.from, end));
+            break;
+          }
+          case 'QuoteMark': {
             let end = node.to;
             if (state.doc.sliceString(end, end + 1) === ' ') end++;
             decos.push(hide.range(node.from, end));
