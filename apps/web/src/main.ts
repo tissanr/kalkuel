@@ -1,3 +1,6 @@
+import '@fontsource-variable/inter/opsz.css';
+import '@fontsource-variable/inter/opsz-italic.css';
+import '@fontsource-variable/jetbrains-mono';
 import './style.css';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, drawSelection, dropCursor, highlightActiveLine, keymap, placeholder } from '@codemirror/view';
@@ -168,9 +171,17 @@ function applyResults() {
 // Theme: auto (follows the system) → light → dark
 type Theme = 'auto' | 'light' | 'dark';
 const themes: Record<Theme, { icon: string; label: string; next: Theme }> = {
-  auto: { icon: '◐', label: 'Auto', next: 'light' },
-  light: { icon: '☀', label: 'Light', next: 'dark' },
-  dark: { icon: '☾', label: 'Dark', next: 'auto' },
+  auto: {
+    icon: '<circle cx="8" cy="8" r="5.75"/><path d="M8 2.25v11.5A5.75 5.75 0 0 0 8 2.25z" fill="currentColor"/>',
+    label: 'Auto',
+    next: 'light',
+  },
+  light: {
+    icon: '<circle cx="8" cy="8" r="2.75"/><path d="M8 1.25v1.5M8 13.25v1.5M1.25 8h1.5M13.25 8h1.5M3.2 3.2l1.06 1.06M11.74 11.74l1.06 1.06M3.2 12.8l1.06-1.06M11.74 4.26l1.06-1.06"/>',
+    label: 'Light',
+    next: 'dark',
+  },
+  dark: { icon: '<path d="M13.5 9.6A5.75 5.75 0 1 1 6.4 2.5a4.5 4.5 0 0 0 7.1 7.1z"/>', label: 'Dark', next: 'auto' },
 };
 const savedTheme = store.get(THEME_KEY);
 let theme: Theme = savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : 'auto';
@@ -181,7 +192,8 @@ function applyTheme() {
   else root.dataset.theme = theme;
   const t = themes[theme];
   const btn = $('btn-theme');
-  btn.textContent = `${t.icon} ${t.label}`;
+  btn.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true">${t.icon}</svg><span class="label">${t.label}</span>`;
+  btn.setAttribute('aria-label', `Theme: ${t.label}`);
   btn.title = `Theme: ${t.label} – click for ${themes[t.next].label}`;
 }
 
@@ -234,6 +246,7 @@ view.focus();
 // Exchange rates
 loadRates().then((s) => {
   view.dispatch({ effects: recompute.of(null) });
+  document.querySelector('.rates')?.classList.add(s.source === 'fallback' ? 'offline' : 'live');
   $('status-rates').textContent =
     s.source === 'fallback' ? 'Exchange rates: approximate (offline)' : `Exchange rates: ECB, as of ${s.date}`;
 });
