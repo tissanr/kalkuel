@@ -32,8 +32,12 @@ export function formatNumber(x: number, locale: Locale, decimals?: number): stri
 }
 
 export function formatValue(v: Value, locale: Locale): string {
-  if (v.kind === 'pct') return locale === 'de' ? `${formatNumber(v.value, locale)} %` : `${formatNumber(v.value, locale)}%`;
-  const d = toDisplay(v);
+  // Temporary bridge to float until exact display (ROADMAP D3).
+  if (v.kind === 'pct') {
+    const p = formatNumber(v.value.toNumber(), locale);
+    return locale === 'de' ? `${p} %` : `${p}%`;
+  }
+  const d = toDisplay(v).toNumber();
   const unit = v.display.length ? ' ' + formatUnits(v.display) : '';
   if (v.fmt === 'hex' || v.fmt === 'bin' || v.fmt === 'oct') {
     const n = Math.round(d);
