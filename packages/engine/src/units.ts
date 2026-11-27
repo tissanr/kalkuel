@@ -1,3 +1,5 @@
+import { D, type Decimal, type DecimalValue } from './num';
+
 /** Dimension vector, e.g. { L: 1, T: -1 } for a speed. */
 export type Dims = Readonly<Record<string, number>>;
 
@@ -5,9 +7,9 @@ export interface UnitDef {
   /** Symbol used for display. */
   symbol: string;
   /** How many base units one of this unit is. */
-  factor: number;
+  factor: Decimal;
   /** Additive offset to the base unit (temperatures only). */
-  offset?: number;
+  offset?: Decimal;
   dims: Dims;
   /** ISO code when this unit is a currency. */
   currency?: string;
@@ -38,8 +40,8 @@ function register(names: string[], u: UnitDef) {
   }
 }
 
-function unit(symbol: string, factor: number, dims: Dims, aliases: string[] = [], extra: Partial<UnitDef> = {}): UnitDef {
-  const u: UnitDef = { symbol, factor, dims, ...extra };
+function unit(symbol: string, factor: DecimalValue, dims: Dims, aliases: string[] = [], extra: Partial<UnitDef> = {}): UnitDef {
+  const u: UnitDef = { symbol, factor: D(factor), dims, ...extra };
   register([symbol, ...aliases], u);
   return u;
 }
@@ -55,7 +57,7 @@ export function unitNames(): string[] {
 // ---------------------------------------------------------------------------
 // Unit table. Base units: m, kg, s, byte, EUR, K.
 
-const L = { L: 1 }, M = { M: 1 }, T = { T: 1 }, D = { D: 1 }, K = { K: 1 };
+const L = { L: 1 }, M = { M: 1 }, T = { T: 1 }, B = { D: 1 }, K = { K: 1 };
 
 // Length
 unit('mm', 0.001, L, ['millimeter', 'millimeters', 'Millimeter']);
@@ -88,20 +90,20 @@ unit('mo', 2629800, T, ['month', 'months', 'Monat', 'Monate', 'Monaten']);
 unit('yr', 31557600, T, ['year', 'years', 'Jahr', 'Jahre', 'Jahren']);
 
 // Data (decimal and binary prefixes)
-unit('bit', 0.125, D, ['bits']);
-unit('B', 1, D, ['byte', 'bytes', 'Byte']);
-unit('kB', 1e3, D, ['KB']);
-unit('MB', 1e6, D);
-unit('GB', 1e9, D);
-unit('TB', 1e12, D);
-unit('PB', 1e15, D);
-unit('KiB', 1024, D);
-unit('MiB', 1024 ** 2, D);
-unit('GiB', 1024 ** 3, D);
-unit('TiB', 1024 ** 4, D);
-unit('kbit', 125, D, ['Kbit']);
-unit('Mbit', 125e3, D);
-unit('Gbit', 125e6, D);
+unit('bit', 0.125, B, ['bits']);
+unit('B', 1, B, ['byte', 'bytes', 'Byte']);
+unit('kB', 1e3, B, ['KB']);
+unit('MB', 1e6, B);
+unit('GB', 1e9, B);
+unit('TB', 1e12, B);
+unit('PB', 1e15, B);
+unit('KiB', 1024, B);
+unit('MiB', 1024 ** 2, B);
+unit('GiB', 1024 ** 3, B);
+unit('TiB', 1024 ** 4, B);
+unit('kbit', 125, B, ['Kbit']);
+unit('Mbit', 125e3, B);
+unit('Gbit', 125e6, B);
 
 // Area
 const A = { L: 2 };
@@ -124,14 +126,14 @@ unit('gal', 0.003785411784, V, ['gallon', 'gallons', 'Gallone', 'Gallonen']);
 
 // Speed
 const S = { L: 1, T: -1 };
-unit('km/h', 1 / 3.6, S, ['kmh', 'kph']);
-unit('mph', 0.44704, S);
-unit('kn', 1852 / 3600, S, ['knot', 'knots', 'Knoten']);
+unit('km/h', D(1).div('3.6'), S, ['kmh', 'kph']);
+unit('mph', '0.44704', S);
+unit('kn', D(1852).div(3600), S, ['knot', 'knots', 'Knoten']);
 
 // Temperature
 unit('K', 1, K, ['kelvin', 'Kelvin']);
-unit('°C', 1, K, ['celsius', 'Celsius', 'degC'], { offset: 273.15 });
-unit('°F', 5 / 9, K, ['fahrenheit', 'Fahrenheit', 'degF'], { offset: 273.15 - (32 * 5) / 9 });
+unit('°C', 1, K, ['celsius', 'Celsius', 'degC'], { offset: D('273.15') });
+unit('°F', D(5).div(9), K, ['fahrenheit', 'Fahrenheit', 'degF'], { offset: D('273.15').minus(D(32 * 5).div(9)) });
 
 // Energy & power
 const E = { M: 1, L: 2, T: -2 };
@@ -177,13 +179,13 @@ const currencies = new Map<string, UnitDef>();
 function currency(code: string, perEur: number) {
   const existing = currencies.get(code);
   if (existing) {
-    existing.factor = 1 / perEur;
+    existing.factor = D(1).div(perEur);
     return;
   }
   const info = CURRENCY_INFO[code] ?? {};
   const u: UnitDef = {
     symbol: info.symbol ?? code,
-    factor: 1 / perEur,
+    factor: D(1).div(perEur),
     dims: { C: 1 },
     currency: code,
     decimals: info.decimals ?? 2,
@@ -245,6 +247,6 @@ export function termsDims(terms: UnitTerm[]): Dims {
   return d;
 }
 
-export function termsFactor(terms: UnitTerm[]): number {
-  return terms.reduce((f, t) => f * Math.pow(t.unit.factor, t.power), 1);
+export function termsFactor(terms: UnitTerm[]): Decimal {
+  return terms.reduce((f, t) => f.times(t.unit.factor.pow(t.power)), D(1));
 }

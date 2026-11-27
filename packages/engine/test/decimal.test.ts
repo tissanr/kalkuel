@@ -27,16 +27,16 @@ const run = (cases: Case[]) => {
 describe('D2 core: + − × ÷ mod and rounding are exact', () => {
   run([
     { src: '0,1 + 0,2', out: '0,3' },
-    { src: '0,1 + 0,2 - 0,3', out: '0', bug: 'D2' },
-    { src: '1,1 + 2,2 - 3,3', out: '0', bug: 'D2' },
-    { src: '0,3 mod 0,1', out: '0', bug: 'D2' },
+    { src: '0,1 + 0,2 - 0,3', out: '0' },
+    { src: '1,1 + 2,2 - 3,3', out: '0' },
+    { src: '0,3 mod 0,1', out: '0' },
     { src: '19,99 € * 3', out: '59,97 €' },
     { src: '10 € / 3 * 3', out: '10,00 €' },
     { src: '100 € + 19 %', out: '119,00 €' },
-    { src: 'round(1,005; 2)', out: '1,01', bug: 'D2' },
+    { src: 'round(1,005; 2)', out: '1,01' },
     { src: 'round(2,675; 2)', out: '2,68' },
-    { src: 'round(-2,5)', out: '-3', bug: 'D2' },
-    { src: 'floor(0,7 + 0,1; 1)', out: '0,8', bug: 'D2' },
+    { src: 'round(-2,5)', out: '-3' },
+    { src: 'floor(0,7 + 0,1; 1)', out: '0,8' },
     { src: 'ceil(1,1 * 3; 1)', out: '3,3' },
   ]);
 });
