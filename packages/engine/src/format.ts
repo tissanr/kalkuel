@@ -1,4 +1,5 @@
 import { toDisplay, type Value } from './evaluate';
+import { D, type Decimal } from './num';
 import type { Locale } from './lexer';
 import type { UnitTerm } from './units';
 
@@ -18,32 +19,33 @@ export function formatUnits(terms: UnitTerm[]): string {
 
 const tag = (locale: Locale) => (locale === 'de' ? 'de-DE' : 'en-US');
 
-export function formatNumber(x: number, locale: Locale, decimals?: number): string {
-  const clean = Number(x.toPrecision(12)) + 0;
-  const abs = Math.abs(clean);
-  if (abs !== 0 && (abs >= 1e15 || abs < 1e-6)) {
-    const [m, e] = clean.toExponential(6).split('e');
+export function formatNumber(x: Decimal, locale: Locale, decimals?: number): string {
+  const d = x.abs().lt('1e-30') ? D(0) : x;
+  const abs = d.abs();
+  if (!abs.isZero() && (abs.gte('1e30') || abs.lt('1e-6'))) {
+    const [m, e] = d.toExponential(6).split('e');
     return `${Number(m).toLocaleString(tag(locale), { maximumFractionDigits: 6 })}e${e.replace('+', '')}`;
   }
-  if (decimals !== undefined) {
-    return clean.toLocaleString(tag(locale), { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-  }
-  return clean.toLocaleString(tag(locale), { maximumFractionDigits: abs < 1 ? 6 : 4 });
+  const places = decimals ?? (abs.lt(1) ? 6 : 4);
+  const r = d.toDecimalPlaces(places);
+  return new Intl.NumberFormat(tag(locale), {
+    minimumFractionDigits: decimals ?? 0,
+    maximumFractionDigits: places,
+  }).format((r.isZero() ? D(0) : r).toFixed() as unknown as number);
 }
 
 export function formatValue(v: Value, locale: Locale): string {
-  // Temporary bridge to float until exact display (ROADMAP D3).
   if (v.kind === 'pct') {
-    const p = formatNumber(v.value.toNumber(), locale);
+    const p = formatNumber(v.value, locale);
     return locale === 'de' ? `${p} %` : `${p}%`;
   }
-  const d = toDisplay(v).toNumber();
+  const d = toDisplay(v);
   const unit = v.display.length ? ' ' + formatUnits(v.display) : '';
   if (v.fmt === 'hex' || v.fmt === 'bin' || v.fmt === 'oct') {
-    const n = Math.round(d);
+    const n = BigInt(d.toDecimalPlaces(0).toFixed());
     const radix = { hex: 16, bin: 2, oct: 8 }[v.fmt];
     const prefix = { hex: '0x', bin: '0b', oct: '0o' }[v.fmt];
-    return `${n < 0 ? '-' : ''}${prefix}${Math.abs(n).toString(radix).toUpperCase()}${unit}`;
+    return `${n < 0n ? '-' : ''}${prefix}${(n < 0n ? -n : n).toString(radix).toUpperCase()}${unit}`;
   }
   if (v.fmt === 'sci') {
     const [m, e] = d.toExponential(6).split('e');
