@@ -176,7 +176,7 @@ export const FALLBACK_RATES: Record<string, number> = {
 
 const currencies = new Map<string, UnitDef>();
 
-function currency(code: string, perEur: number) {
+function currency(code: string, perEur: Decimal) {
   const existing = currencies.get(code);
   if (existing) {
     existing.factor = D(1).div(perEur);
@@ -194,13 +194,17 @@ function currency(code: string, perEur: number) {
   register([code, ...(info.symbol ? [info.symbol] : []), ...(info.names ?? [])], u);
 }
 
-currency('EUR', 1);
-for (const [code, rate] of Object.entries(FALLBACK_RATES)) currency(code, rate);
+currency('EUR', D(1));
+for (const [code, rate] of Object.entries(FALLBACK_RATES)) currency(code, D(String(rate)));
 
-/** Update exchange rates. `rates` maps ISO code → units per 1 EUR. */
-export function setRates(rates: Record<string, number>) {
+/**
+ * Update exchange rates. `rates` maps ISO code → units per 1 EUR.
+ * Each rate goes through its string form, so `1.0853` stays exactly `1.0853`.
+ */
+export function setRates(rates: Record<string, DecimalValue>) {
   for (const [code, rate] of Object.entries(rates)) {
-    if (code !== 'EUR' && /^[A-Z]{3}$/.test(code) && rate > 0) currency(code, rate);
+    const r = D(String(rate));
+    if (code !== 'EUR' && /^[A-Z]{3}$/.test(code) && r.gt(0)) currency(code, r);
   }
 }
 
